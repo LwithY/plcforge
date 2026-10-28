@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -63,6 +64,9 @@ class Config:
     max_turns: int = 24
     max_output_tokens: int = 8192
     total_token_budget: int = 160000
+    request_token_budget: int = 0
+    min_output_tokens: int = 256
+    input_estimate_safety_factor: float = 1.2
     context_chars: int = 80000
     timeout_seconds: int = 120
     wall_seconds: int = 900
@@ -113,9 +117,13 @@ class Config:
             raise ValueError('api_key_env must be an environment-variable name, or empty for no authentication')
         register_secret(os.environ.get(self.api_key_env,''))
         for key in ('max_turns', 'max_output_tokens', 'total_token_budget', 'context_chars',
-                    'timeout_seconds', 'wall_seconds', 'max_repeated_results'):
+                    'timeout_seconds', 'wall_seconds', 'max_repeated_results', 'min_output_tokens'):
             if type(getattr(self,key)) is not int or getattr(self,key) < 1:
                 raise ValueError('%s must be positive' % key)
+        if type(self.request_token_budget) is not int or self.request_token_budget < 0:
+            raise ValueError('request_token_budget must be nonnegative (0 means no extra per-request limit)')
+        if type(self.input_estimate_safety_factor) not in (float,int) or not math.isfinite(self.input_estimate_safety_factor) or self.input_estimate_safety_factor < 1:
+            raise ValueError('input_estimate_safety_factor must be at least 1')
         if type(self.max_retries) is not int or self.max_retries < 0 or type(self.retry_base_seconds) not in (int,float) or self.retry_base_seconds <= 0:
             raise ValueError('max_retries must be nonnegative; retry_base_seconds must be positive')
         return self

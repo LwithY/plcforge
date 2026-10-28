@@ -58,9 +58,9 @@ class Reply:
     usage_complete: bool = True
 
 
-def request_payload(config, messages, tools):
+def request_payload(config, messages, tools, max_output_tokens=None):
     payload = {'model':config.model, 'messages':messages, 'stream':True,
-               'stream_options':{'include_usage':True}, 'max_tokens':config.max_output_tokens}
+               'stream_options':{'include_usage':True}, 'max_tokens':max_output_tokens or config.max_output_tokens}
     if tools:
         payload.update(tools=tools, tool_choice='auto')
     return payload
@@ -110,6 +110,7 @@ class OpenAIProvider:
         self.config = config
         self.on_retry = on_retry
         self.on_attempt = on_attempt
+        self.before_attempt = None
 
     def attempt_event(self, phase, attempt, **details):
         if self.on_attempt:
@@ -129,12 +130,13 @@ class OpenAIProvider:
         return True
 
     def complete(self, messages: list[dict], tools: list[dict], on_text=None,
-                 deadline: float | None = None) -> Reply:
+                 deadline: float | None = None, max_output_tokens=None) -> Reply:
         config = self.config
-        payload = request_payload(config,messages,tools)
-        data = json.dumps(payload, ensure_ascii=False).encode('utf-8')
         started = time.monotonic()
         for attempt in range(config.max_retries+1):
+            cap = self.before_attempt(messages, tools) if self.before_attempt else max_output_tokens
+            payload = request_payload(config,messages,tools,cap)
+            data = json.dumps(payload, ensure_ascii=False).encode('utf-8')
             remaining = (deadline - time.monotonic()) if deadline else config.timeout_seconds
             if remaining <= 0:
                 raise ModelError('Task wall time budget reached')

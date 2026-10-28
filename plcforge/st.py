@@ -10,8 +10,13 @@ import math
 import re
 
 
+ENGINE_VERSION = 'st-subset-2'
+
+
 class STError(ValueError):
-    pass
+    def __init__(self, message, *, offset=None, expected=None, actual=None, code='ST_SYNTAX'):
+        super().__init__(message)
+        self.offset, self.expected, self.actual, self.code = offset, expected, actual, code
 
 
 class Unsupported(STError):
@@ -67,15 +72,23 @@ TOKEN = re.compile(r'\s+|(?:TIME|T)\#(?:\d+(?:\.\d+)?(?:MS|D|H|M|S))+|'
                    r':=|=>|<=|>=|<>|\*\*|[;:,.()+*/=<>\-]', re.I)
 
 
-def lex(text: str) -> list[str]:
-    result, pos = [], 0
+class Tokens(list):
+    def __init__(self, source, end):
+        super().__init__()
+        self.source, self.end, self.positions = source, end, []
+
+
+def lex(text: str, *, source=None, offset=0) -> list[str]:
+    result, pos = Tokens(source or text, offset+len(text)), 0
     while pos < len(text):
         match = TOKEN.match(text, pos)
         if not match:
-            raise Unsupported('Unsupported ST token at: ' + text[pos:pos+45])
+            raise Unsupported('Unsupported ST token at: ' + text[pos:pos+45], offset=offset+pos,
+                              actual=text[pos:pos+1], code='ST_UNSUPPORTED')
         token = match.group()
         if not token.isspace():
             result.append(token.upper())
+            result.positions.append(offset+pos)
         pos = match.end()
     return result
 
@@ -101,7 +114,11 @@ class Parser:
     def pop(self, expected: str | None = None) -> str:
         value = self.peek()
         if expected and value != expected:
-            raise STError('Expected %s, got %s at token %d' % (expected, value, self.pos))
+            index = self.pos-1 if expected == ';' and self.pos and self.tokens[self.pos-1] in ('END_IF', 'END_CASE') else self.pos
+            positions = getattr(self.tokens, 'positions', [])
+            offset = positions[index] if index < len(positions) else getattr(self.tokens, 'end', None)
+            raise STError('Expected %s, got %s at token %d' % (expected, value, self.pos),
+                          offset=offset, expected=expected, actual=value, code='ST_EXPECTED_TOKEN')
         if value == '<EOF>':
             raise STError('Unexpected end of input')
         self.pos += 1
@@ -256,6 +273,7 @@ class Program:
         if not header:
             raise Unsupported('Use one PROGRAM or FUNCTION_BLOCK per .st file')
         self.kind, self.name = header.group(1).upper(), header.group(2)
+        base = header.end()
         text = text[header.end():]
         ending = re.search(r'\bEND_' + self.kind + r'\s*;?\s*$', text, re.I)
         if not ending:
@@ -264,7 +282,7 @@ class Program:
         self.declarations = {}
         spans = list(re.finditer(r'\b(VAR_INPUT|VAR_OUTPUT|VAR_IN_OUT|VAR)\b(.*?)\bEND_VAR\b', body, re.I|re.S))
         for match in spans:
-            tokens = Parser(lex(match.group(2)))
+            tokens = Parser(lex(match.group(2), source=source, offset=base+match.start(2)))
             while tokens.peek() != '<EOF>':
                 names = [tokens.pop()]
                 while tokens.peek() == ',':
@@ -273,7 +291,8 @@ class Program:
                 tokens.pop(':')
                 dtype = tokens.pop()
                 if dtype not in SCALAR_TYPES | BLOCK_TYPES:
-                    raise Unsupported('Unsupported local variable type: ' + dtype)
+                    raise Unsupported('Unsupported local variable type: ' + dtype,
+                                      offset=tokens.tokens.positions[tokens.pos-1], code='ST_UNSUPPORTED')
                 initial = ('literal', False if dtype == 'BOOL' else 0)
                 if tokens.peek() == ':=':
                     tokens.pop(':=')
@@ -284,8 +303,9 @@ class Program:
                         raise STError('Invalid or duplicate variable: ' + name)
                     self.declarations[name] = Declaration(name, dtype, match.group(1).upper(), initial)
         for match in reversed(spans):
-            body = body[:match.start()] + ' ' * (match.end()-match.start()) + body[match.end():]
-        parser = Parser(lex(body))
+            blank = ''.join('\n' if c == '\n' else ' ' for c in body[match.start():match.end()])
+            body = body[:match.start()] + blank + body[match.end():]
+        parser = Parser(lex(body, source=source, offset=base))
         self.code = parser.block(set())
         self.env = {}
         for name, decl in self.declarations.items():
@@ -473,7 +493,52 @@ class Program:
         return {name: value for name, value in self.env.items() if not isinstance(value, dict)}
 
 
-def lint(source: str) -> dict:
+def diagnostic(exc, source, path='src/PLC_PRG.st'):
+    offset = getattr(exc, 'offset', None)
+    located = offset is not None
+    offset = min(max(offset or 0, 0), len(source))
+    line = source.count('\n', 0, offset)+1
+    start = source.rfind('\n', 0, offset)+1
+    lines = source.splitlines()
+    return {'file': path, 'line': line, 'column': offset-start+1,
+            'code': getattr(exc, 'code', 'ST_EXECUTION'), 'message': str(exc),
+            'source': lines[line-1] if line <= len(lines) else '', 'location_exact': located,
+            'expected': getattr(exc, 'expected', None), 'actual': getattr(exc, 'actual', None),
+            'category': 'subset_limitation' if isinstance(exc, Unsupported) else 'language_error'}
+
+
+def check_interface(source: str, interface: dict, path='src/PLC_PRG.st') -> dict:
+    declarations = {}
+    clean = strip_comments(source)
+    for block in re.finditer(r'\b(VAR_INPUT|VAR_OUTPUT|VAR_IN_OUT|VAR)\b(.*?)\bEND_VAR\b', clean, re.I|re.S):
+        for match in re.finditer(r'\b([A-Z_]\w*(?:\s*,\s*[A-Z_]\w*)*)\s*:\s*([A-Z_]\w*)', block.group(2), re.I):
+            for name in re.split(r'\s*,\s*', match.group(1)):
+                declarations[name.upper()] = (match.group(2).upper(), block.group(1).upper(),
+                                             block.start(2)+match.start(1))
+    errors = []
+    for group, direction in (('inputs', 'VAR_INPUT'), ('outputs', 'VAR_OUTPUT'), ('in_out', 'VAR_IN_OUT')):
+        for name, dtype in interface.get(group, {}).items():
+            found = declarations.get(name.upper())
+            expected_type = dtype.get('type') if isinstance(dtype, dict) else dtype
+            if found is None or found[:2] != (expected_type.upper(), direction):
+                exc = STError('Interface %s requires %s %s; found %s' %
+                              (name, direction, expected_type, found[:2] if found else 'missing'),
+                              offset=found[2] if found else 0, code='ST_INTERFACE',
+                              expected=direction+' '+expected_type,
+                              actual=' '.join(found[:2]) if found else '<missing>')
+                item = diagnostic(exc, source, path)
+                item.update(category='test_interface', name=name)
+                errors.append(item)
+    header = re.match(r'\s*(PROGRAM|FUNCTION_BLOCK)\s+(\w+)', clean, re.I)
+    if header and ((interface.get('pou') and header.group(2).upper() != interface['pou'].upper()) or
+                   (interface.get('kind') and header.group(1).upper() != interface['kind'].upper())):
+        errors.append(diagnostic(STError('POU name/kind does not match contract', offset=header.start(),
+                                         code='ST_INTERFACE'), source, path))
+    return {'status': 'failed' if errors else 'passed', 'diagnostics': errors,
+            'scope': 'declared interface names, types, directions and POU'}
+
+
+def lint(source: str, path='src/PLC_PRG.st') -> dict:
     try:
         program = Program(source)
         # This catches syntax and initialization only; unreachable branches are exercised by tests/CODESYS.
@@ -482,10 +547,10 @@ def lint(source: str) -> dict:
                 'scope': 'subset syntax and declaration initialization; no complete type checking'}
     except Unsupported as exc:
         return {'status': 'unsupported', 'engine': 'st-subset-parser', 'is_codesys_compile': False,
-                'diagnostics': [str(exc)]}
+                'diagnostics': [diagnostic(exc, source, path)], 'scope': 'supported ST subset only'}
     except (STError, ArithmeticError, TypeError, IndexError, RecursionError) as exc:
         return {'status': 'failed', 'engine': 'st-subset-parser', 'is_codesys_compile': False,
-                'diagnostics': [str(exc)]}
+                'diagnostics': [diagnostic(exc, source, path)]}
 
 
 def run_tests(source: str, cases: list[dict], scan_ms: int = 20) -> dict:

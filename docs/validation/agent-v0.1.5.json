@@ -1,0 +1,466 @@
+{
+  "version": "0.1.5",
+  "status": "passed",
+  "python_unit_tests": 144,
+  "node_tests": 7,
+  "live_p01": [
+    {
+      "run_id": "20261028-211839-baseline-091103",
+      "implementation": "baseline-0.1.4",
+      "version": "0.1.4",
+      "model": "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+      "prompt_sha256": "7926b23ec775fb82dc66aae93a39eb944cbd8044493547e5effe2f2a99a3f350",
+      "task_file_sha256": "2a95eeb68f8d03bc6ab081398a312c3576d3136949c93ee82c225f8acb92f460",
+      "framework_status": "completed",
+      "stop_reason": "completed",
+      "artifact_status": "completed",
+      "model_calls": 7,
+      "usage": {
+        "prompt_tokens": 150206,
+        "completion_tokens": 7090,
+        "total_tokens": 157296
+      },
+      "usage_missing": null,
+      "elapsed_seconds": 116.4380000000001,
+      "source_writes": 1,
+      "source_modifications": 0,
+      "compile_count": 1,
+      "development": {
+        "status": "passed",
+        "passed": 8,
+        "total": 8,
+        "suite_sha256": "00740c48b299d7f8fe0d5659334e5bc3246c47de84731205afc6d3cf68f04fd1"
+      },
+      "independent": {
+        "status": "passed",
+        "passed": 387,
+        "total": 387
+      },
+      "compile": {
+        "status": "passed",
+        "error_count": 0,
+        "build_completed": true,
+        "generate_code_completed": true,
+        "source_hashes": {
+          "src/PLC_PRG.st": "7344c2d10fc5f5dec9c277c0863629f0f68e258af302cd0d9ad95d8f52e65610"
+        }
+      },
+      "requirement_review": "pending_confirmation",
+      "source_hashes": {
+        "src/PLC_PRG.st": "7344c2d10fc5f5dec9c277c0863629f0f68e258af302cd0d9ad95d8f52e65610"
+      },
+      "cash_cost": null,
+      "cash_cost_status": "No price schedule or account bill supplied; no exact cash fee claimed",
+      "limits": {
+        "max_turns": 24,
+        "max_output_tokens": 8192,
+        "total_token_budget": 160000,
+        "context_chars": 80000,
+        "timeout_seconds": 120,
+        "wall_seconds": 900,
+        "max_retries": 3
+      },
+      "temperature": "provider default; not explicitly set",
+      "reasoning_effort": "provider default; not explicitly set"
+    },
+    {
+      "run_id": "20261028-212412-improved-0431dc",
+      "implementation": "improved",
+      "version": "0.1.5",
+      "model": "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+      "prompt_sha256": "7926b23ec775fb82dc66aae93a39eb944cbd8044493547e5effe2f2a99a3f350",
+      "task_file_sha256": "2a95eeb68f8d03bc6ab081398a312c3576d3136949c93ee82c225f8acb92f460",
+      "framework_status": "completed",
+      "stop_reason": "completed",
+      "artifact_status": "completed",
+      "model_calls": 4,
+      "usage": {
+        "prompt_tokens": 61048,
+        "completion_tokens": 2789,
+        "total_tokens": 63837
+      },
+      "usage_missing": null,
+      "elapsed_seconds": 50.6880000000001,
+      "source_writes": 2,
+      "source_modifications": 1,
+      "compile_count": 1,
+      "development": {
+        "status": "passed",
+        "passed": 8,
+        "total": 8,
+        "suite_sha256": "00740c48b299d7f8fe0d5659334e5bc3246c47de84731205afc6d3cf68f04fd1"
+      },
+      "independent": {
+        "status": "passed",
+        "passed": 387,
+        "total": 387
+      },
+      "compile": {
+        "status": "passed",
+        "error_count": 0,
+        "build_completed": true,
+        "generate_code_completed": true,
+        "source_hashes": {
+          "src/PLC_PRG.st": "5d5b6cbf22c9d27dfd652fb30f3197ccbd26aee78fb770b93ff0ed3889fe7e28"
+        }
+      },
+      "requirement_review": "pending_confirmation",
+      "source_hashes": {
+        "src/PLC_PRG.st": "5d5b6cbf22c9d27dfd652fb30f3197ccbd26aee78fb770b93ff0ed3889fe7e28"
+      },
+      "cash_cost": null,
+      "cash_cost_status": "No price schedule or account bill supplied; no exact cash fee claimed",
+      "limits": {
+        "max_turns": 24,
+        "max_output_tokens": 8192,
+        "total_token_budget": 160000,
+        "request_token_budget": 0,
+        "min_output_tokens": 256,
+        "input_estimate_safety_factor": 1.2,
+        "context_chars": 80000,
+        "timeout_seconds": 120,
+        "wall_seconds": 900,
+        "max_retries": 3
+      },
+      "temperature": "provider default; not explicitly set",
+      "reasoning_effort": "provider default; not explicitly set"
+    }
+  ],
+  "input_token_reduction_fraction": 0.5935714951466653,
+  "compaction_replay": [
+    {
+      "before_chars": 158688,
+      "after_chars": 857,
+      "strategy": "trim_tool_results",
+      "changed": true
+    }
+  ],
+  "feedback_bytes": 809,
+  "unabridged_test_result_bytes": 24282,
+  "diagnostic_samples": [
+    {
+      "case": "missing_END_IF_semicolon",
+      "result": {
+        "status": "failed",
+        "engine": "st-subset-parser",
+        "is_codesys_compile": false,
+        "diagnostics": [
+          {
+            "file": "src/PLC_PRG.st",
+            "line": 13,
+            "column": 41,
+            "code": "ST_EXPECTED_TOKEN",
+            "message": "Expected ;, got 1 at token 13",
+            "source": "    0: IF bottleSensor THEN phase := 1; END_IF",
+            "location_exact": true,
+            "expected": ";",
+            "actual": "1",
+            "category": "language_error"
+          }
+        ]
+      }
+    },
+    {
+      "case": "missing_END_CASE_semicolon",
+      "result": {
+        "status": "failed",
+        "engine": "st-subset-parser",
+        "is_codesys_compile": false,
+        "diagnostics": [
+          {
+            "file": "src/PLC_PRG.st",
+            "line": 19,
+            "column": 1,
+            "code": "ST_EXPECTED_TOKEN",
+            "message": "Expected ;, got PUMP_MOTOR at token 70",
+            "source": "END_CASE",
+            "location_exact": true,
+            "expected": ";",
+            "actual": "PUMP_MOTOR",
+            "category": "language_error"
+          }
+        ]
+      }
+    },
+    {
+      "case": "input_direction",
+      "result": {
+        "status": "failed",
+        "diagnostics": [
+          {
+            "file": "src/PLC_PRG.st",
+            "line": 3,
+            "column": 5,
+            "code": "ST_INTERFACE",
+            "message": "Interface bottleSensor requires VAR_INPUT BOOL; found ('BOOL', 'VAR')",
+            "source": "    bottleSensor, cleaningConfirmButton, fillingConfirmButton : BOOL;",
+            "location_exact": true,
+            "expected": "VAR_INPUT BOOL",
+            "actual": "BOOL VAR",
+            "category": "test_interface",
+            "name": "bottleSensor"
+          },
+          {
+            "file": "src/PLC_PRG.st",
+            "line": 3,
+            "column": 5,
+            "code": "ST_INTERFACE",
+            "message": "Interface cleaningConfirmButton requires VAR_INPUT BOOL; found ('BOOL', 'VAR')",
+            "source": "    bottleSensor, cleaningConfirmButton, fillingConfirmButton : BOOL;",
+            "location_exact": true,
+            "expected": "VAR_INPUT BOOL",
+            "actual": "BOOL VAR",
+            "category": "test_interface",
+            "name": "cleaningConfirmButton"
+          },
+          {
+            "file": "src/PLC_PRG.st",
+            "line": 3,
+            "column": 5,
+            "code": "ST_INTERFACE",
+            "message": "Interface fillingConfirmButton requires VAR_INPUT BOOL; found ('BOOL', 'VAR')",
+            "source": "    bottleSensor, cleaningConfirmButton, fillingConfirmButton : BOOL;",
+            "location_exact": true,
+            "expected": "VAR_INPUT BOOL",
+            "actual": "BOOL VAR",
+            "category": "test_interface",
+            "name": "fillingConfirmButton"
+          },
+          {
+            "file": "src/PLC_PRG.st",
+            "line": 4,
+            "column": 5,
+            "code": "ST_INTERFACE",
+            "message": "Interface cappingConfirmButton requires VAR_INPUT BOOL; found ('BOOL', 'VAR')",
+            "source": "    cappingConfirmButton, packingConfirmButton, finishedButton : BOOL;",
+            "location_exact": true,
+            "expected": "VAR_INPUT BOOL",
+            "actual": "BOOL VAR",
+            "category": "test_interface",
+            "name": "cappingConfirmButton"
+          },
+          {
+            "file": "src/PLC_PRG.st",
+            "line": 4,
+            "column": 5,
+            "code": "ST_INTERFACE",
+            "message": "Interface packingConfirmButton requires VAR_INPUT BOOL; found ('BOOL', 'VAR')",
+            "source": "    cappingConfirmButton, packingConfirmButton, finishedButton : BOOL;",
+            "location_exact": true,
+            "expected": "VAR_INPUT BOOL",
+            "actual": "BOOL VAR",
+            "category": "test_interface",
+            "name": "packingConfirmButton"
+          },
+          {
+            "file": "src/PLC_PRG.st",
+            "line": 4,
+            "column": 5,
+            "code": "ST_INTERFACE",
+            "message": "Interface finishedButton requires VAR_INPUT BOOL; found ('BOOL', 'VAR')",
+            "source": "    cappingConfirmButton, packingConfirmButton, finishedButton : BOOL;",
+            "location_exact": true,
+            "expected": "VAR_INPUT BOOL",
+            "actual": "BOOL VAR",
+            "category": "test_interface",
+            "name": "finishedButton"
+          }
+        ],
+        "scope": "declared interface names, types, directions and POU"
+      }
+    }
+  ],
+  "mutations": [
+    {
+      "mutation": "skip_stage",
+      "detected": true,
+      "passed": 96,
+      "total": 387
+    },
+    {
+      "mutation": "simultaneous_actuators",
+      "detected": true,
+      "passed": 32,
+      "total": 387
+    },
+    {
+      "mutation": "queued_early_confirmation",
+      "detected": true,
+      "passed": 384,
+      "total": 387
+    }
+  ],
+  "native_verification": {
+    "run_id": "20261028-212755-cab01e",
+    "compiler_fingerprint": "d793ddbfb40c911e8bfdf0a6709d424ea2fb202a170d7d49d68715e8f7b9346b",
+    "process_exit_code": 0,
+    "status": "passed",
+    "cases": [
+      {
+        "id": "P01",
+        "expectation_met": true,
+        "local_scan_status": "not_run",
+        "local_syntax_status": "passed",
+        "native_status": "passed",
+        "error_count": 0,
+        "build_completed": true,
+        "generate_code_completed": true,
+        "source_hashes": {
+          "src/PLC_PRG.st": "c468d97cc63d2f84ccb6b8239e2268992db22a57b6111a749667bb58026d068b"
+        }
+      },
+      {
+        "id": "edge",
+        "expectation_met": true,
+        "local_scan_status": "passed",
+        "local_syntax_status": "passed",
+        "native_status": "passed",
+        "error_count": 0,
+        "build_completed": true,
+        "generate_code_completed": true,
+        "source_hashes": {
+          "src/PLC_PRG.st": "2d6562e8c4ef246c040a62203902c08eeb2d067fe79ea290db0c46faa8bbb762"
+        }
+      },
+      {
+        "id": "timer",
+        "expectation_met": true,
+        "local_scan_status": "passed",
+        "local_syntax_status": "passed",
+        "native_status": "passed",
+        "error_count": 0,
+        "build_completed": true,
+        "generate_code_completed": true,
+        "source_hashes": {
+          "src/PLC_PRG.st": "53dddee6a91c06aa59395f8117b99374c0f25e46a68290f05935cd035ee89f69"
+        }
+      },
+      {
+        "id": "array",
+        "expectation_met": true,
+        "local_scan_status": "unsupported",
+        "local_syntax_status": "unsupported",
+        "native_status": "passed",
+        "error_count": 0,
+        "build_completed": true,
+        "generate_code_completed": true,
+        "source_hashes": {
+          "src/PLC_PRG.st": "142ff97dc725d96a2d164b2e2a184132501a4e4bc6ce0cb84f9f7ba8c2c78913"
+        }
+      },
+      {
+        "id": "multiple_function_blocks",
+        "expectation_met": true,
+        "local_scan_status": "unsupported",
+        "local_syntax_status": "unsupported",
+        "native_status": "passed",
+        "error_count": 0,
+        "build_completed": true,
+        "generate_code_completed": true,
+        "source_hashes": {
+          "src/RelayFB.st": "2fec565e8a7a86c1dac2cf828ed46d9758d8b5e0ff8137fd8db644d1e8769276",
+          "src/PLC_PRG.st": "2c83dd6f3dc51942cadb05e20fc0ef53bb4703bfeb07431ab25ca800674bd776"
+        }
+      },
+      {
+        "id": "invalid_unknown_symbol",
+        "expectation_met": true,
+        "local_scan_status": "not_run",
+        "local_syntax_status": "passed",
+        "native_status": "failed",
+        "error_count": 2,
+        "build_completed": true,
+        "generate_code_completed": true,
+        "source_hashes": {
+          "src/PLC_PRG.st": "5e572b5ec283b14aa8bb42c91ebd168448b9496940e4da97c3105c5ccbd959f3"
+        }
+      },
+      {
+        "id": "missing_end_if_semicolon",
+        "expectation_met": true,
+        "local_scan_status": "not_run",
+        "local_syntax_status": "failed",
+        "native_status": "passed",
+        "error_count": 0,
+        "build_completed": true,
+        "generate_code_completed": true,
+        "source_hashes": {
+          "src/PLC_PRG.st": "a110ee4347873ef6854139344cac1fa60599814058081d283c8af579f122f7f3"
+        }
+      },
+      {
+        "id": "missing_end_case_semicolon",
+        "expectation_met": true,
+        "local_scan_status": "not_run",
+        "local_syntax_status": "failed",
+        "native_status": "passed",
+        "error_count": 0,
+        "build_completed": true,
+        "generate_code_completed": true,
+        "source_hashes": {
+          "src/PLC_PRG.st": "af8155182e70a2ac05a8fdb9d588c59ef6bd086564f34e43fa53153ed1194652"
+        }
+      }
+    ]
+  },
+  "independent_suite": {
+    "sha256": "a1f962bb761cc76051b320e20dca6958f00ad5fc637c602b3c0158f41a7306fe",
+    "version": "P01-independent-v1-reconstructed",
+    "contract_sha256": "b5bf1e41d468f09b690d754e6fc4107ac3424a17c5f77ed8b4beafdaf653c30b",
+    "cases": 387,
+    "scans": 1604,
+    "development_cases": 8,
+    "development_scans": 76,
+    "development_suite_sha256": "00740c48b299d7f8fe0d5659334e5bc3246c47de84731205afc6d3cf68f04fd1"
+  },
+  "budget_exhaustion_injection": {
+    "regression": "test_host_archives_after_budget_stop_without_extra_request",
+    "stop_reason": "token_budget",
+    "artifact_status": "completed",
+    "model_requests": 1,
+    "compiler": "explicit unit-test fixture; native receipts are separate"
+  },
+  "limitations": [
+    "One live run per implementation with an updateable model alias; no general performance ranking.",
+    "Published JSON uses fixed LF line endings. Frozen per-run input bytes are preserved locally; model-visible task content is checked unchanged.",
+    "Original collaborator evidence is unavailable and was not modified; both local suites are new reconstructions.",
+    "Baseline system prompt/tool definitions differ because they are implementation changes. Task input is frozen.",
+    "Independent expectations were outside both model workspaces and never fed back for repair.",
+    "Compaction is a separate controlled replay; the improved live trial did not trigger compaction.",
+    "CODESYS SP22 Patch 4 accepts omitted END_IF/END_CASE semicolons; the portable subset requires them.",
+    "No CODESYS runtime, physical PLC run or full formal verification was performed."
+  ],
+  "requirement_review": "pending_confirmation",
+  "report_status": "saved",
+  "codesys_runtime": "not_run",
+  "physical_plc": "not_run",
+  "evidence_sha256": {
+    "p01_comparison": "dcac8eb2495c160b846c32f4be3471abcff38c58fd6db66e498be57a726e7504",
+    "unit_test_log": "9ffee5d1cbb8d51c8d1d951f881c8ff21ebdb2674e481dab38476bf50ac3db26"
+  },
+  "validated_runtime_sources_normalized_sha256": {
+    "plcforge/__init__.py": "d42d6ed36f4a5892d45a3c45e7ded53f731298bc97589b76a5a8ac38563004ab",
+    "plcforge/__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
+    "plcforge/agent.py": "65b064e4172051561d47889e0a3c6b8d9c609ead4ba0b187da4fc9414a607ca1",
+    "plcforge/benchmark.py": "f64fcc476fd98dcf2e12efe174dd870a9e44dbeafc788b27f4e4e9ff4431ab32",
+    "plcforge/bootstrap.py": "8de79ff68cf56d5d90e53830ef767e9094b83924b85af2c5e41f0094de6b1d55",
+    "plcforge/bridge/codesys_build.py": "e52754e0ceb0c714e17ff9654b818752f5e111fcd06bca8829bbbf80ec08506e",
+    "plcforge/bridge/prepare_template.py": "2d9fdf8252c07d8358b8a3166edaf5d49577a0c52fc3c47311b5686803744ef9",
+    "plcforge/budget.py": "043b5b1068ae7ceda0c18c9eb10e686fea14e42bf6c12da0ff5f2ec7f42f37f5",
+    "plcforge/cli.py": "f4701c4985afd9c6b62f3be4e551e566146729929a81239292e262542789015a",
+    "plcforge/compiler.py": "3752c2240a6149f0049105b2b81f1993d8f134743d3ec22a6a1227f890028cc8",
+    "plcforge/config.py": "d830f621c7136b56c5c6531e03b7cecd91dcc0eb65a61c6db7b3fd90ac4d426b",
+    "plcforge/context.py": "ef7fb230253c1797ce14ff0e98170de49d69eb594aff6eeac886dbc1c301a6c6",
+    "plcforge/evaluation.py": "a08f1788537a9cc22f60fd20349a6ec8b5fcf2683bd7276446938bbec43177df",
+    "plcforge/evidence.py": "a3db52bc6c1e0ad2fc79c9d60ba01b29db0baa7e2047da0b7dfad6dfa10d3b7f",
+    "plcforge/intent.py": "874eee3e1566bf4b94ae118cfdeefecf68503e7b3695a5b9fadafbf99dac553a",
+    "plcforge/ltl.py": "80dc4bc47ee71f4296acdf882358621415f3625b691bc28401bd824009ec7e44",
+    "plcforge/progress.py": "d0d61b121215431ea8f22b4103be527f908422af1534fa4a0c4bc975de68ae95",
+    "plcforge/provider.py": "5bff104f705dc66e32afca0591065033fa3868a9e44c455065c7b9bfbd60b1e2",
+    "plcforge/security.py": "ec13869e59467d467a653a4fa65c14a76f09aab459f9b6f01beb38564f654058",
+    "plcforge/st.py": "6cef6e1eefe7368aa943c126f9fdccb9dda6525fe87208145b53030e76dd9792",
+    "plcforge/tasks.py": "a1ff5c520748c3d6f3a60f99e8005131296898bcc54788e1296b8aecafdc2355",
+    "plcforge/tools.py": "000ca86c68b0610c88bade570ac9cf0ae316d1a1d670ae6d67c644edd698724d",
+    "plcforge/transcript.py": "6006f3ff32e5ca3682c0129637279a2da88c9a821ef2d5b80f2b0264449f584f"
+  }
+}

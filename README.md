@@ -92,6 +92,8 @@ plcforge resume 会话ID --workspace ./motor
 
 本地测试器支持 ST 的一个子集，扫描测试和有限轨迹 LTL 监测不等同于真实 PLC 运行测试或完整形式验证。`completed` 必须有匹配当前源代码的真实 CODESYS 通过结果；普通问答使用 `answered` 状态。当前没有“性能超过 Claude Code”的四组对照实验结论。
 
+0.1.5 起，宿主在文件修改后自动核验并保存产物，测试轨迹单独落盘，模型默认只收到摘要。结果分别记录产物验证、Agent 停止原因、需求审核与报告状态。会话预算跨请求和恢复累计；独立评测需放在模型工作区之外。使用方法、预算恢复、P01 对照实测与验证范围见 [Agent 改进与验收](docs/AGENT_IMPROVEMENTS_0.1.5.md)。
+
 ## 开发
 
 ```powershell

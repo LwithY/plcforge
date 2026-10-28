@@ -17,7 +17,7 @@ from .st import lint, run_tests
 from .tasks import load_task, task_prompt, validate_task
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-COMMANDS = {'init','setup','doctor','settings','run','chat','resume','lint','test','compile','dataset','bench'}
+COMMANDS = {'init','setup','doctor','settings','run','chat','resume','lint','test','compile','dataset','bench','evaluate'}
 
 
 def normalize_arguments(argv):
@@ -66,6 +66,10 @@ def print_run(result, show_model_summary=False):
             print('\n任务交互记录: '+result['transcript_path'])
         return
     print('\nPLCForge: ' + result['status'])
+    print('Agent stop reason: '+result.get('stop_reason',result['status']))
+    print('Artifact validation: '+result.get('artifact_status','not_checked'))
+    print('Requirement review: '+result.get('requirement_review','pending_confirmation'))
+    print('Report: '+result.get('report_status','unknown'))
     print('Workspace: ' + result['workspace'])
     print('Session: ' + result['session_id'])
     tests = result.get('validation',{}).get('tests') or {}
@@ -110,16 +114,23 @@ def parser():
         p.add_argument('--model')
         p.add_argument('--max-turns',type=int)
         p.add_argument('--wall-seconds',type=int)
+        p.add_argument('--total-token-budget',type=int,help='Session cumulative token budget, including resumes')
+        p.add_argument('--request-token-budget',type=int,help='Per API attempt input+output estimate limit; 0 disables this extra limit')
+        p.add_argument('--max-output-tokens',type=int)
         p.add_argument('--json',action='store_true',dest='json_output')
         p.add_argument('--show-model-summary',action='store_true',help='Show the model explanation after verified metrics')
         p.add_argument('--mode',choices=['auto','answer','code'],default='auto',help='Auto route requests, answer without edits, or require PLC implementation checks')
         if name != 'chat':
             p.add_argument('-p','--prompt',default='')
             p.add_argument('--prompt-file',type=Path)
+            p.add_argument('--holdout',type=Path,help='Optional host-only suite outside the model workspace')
+            p.add_argument('--holdout-sha256')
+            p.add_argument('--evaluation-output',type=Path,help='Independent report outside the model workspace')
         if name == 'run':
             p.add_argument('--task',type=Path)
         if name == 'resume':
             p.add_argument('session_id')
+            p.add_argument('--replace-budget',action='store_true',help='Explicitly replace the saved budget policy, retaining consumed usage')
     p = sub.add_parser('lint')
     p.add_argument('source',type=Path)
     p = sub.add_parser('test')
@@ -127,6 +138,13 @@ def parser():
     p.add_argument('--task',type=Path,required=True)
     p = sub.add_parser('compile')
     p.add_argument('--workspace',type=Path,required=True)
+    p = sub.add_parser('evaluate',help='Host-only independent evaluation after the model has stopped')
+    p.add_argument('--workspace',type=Path,required=True)
+    p.add_argument('--task',type=Path,required=True)
+    p.add_argument('--holdout',type=Path,required=True)
+    p.add_argument('--holdout-sha256',required=True)
+    p.add_argument('--output',type=Path,required=True)
+    p.add_argument('--run-result',type=Path)
     p = sub.add_parser('dataset')
     p.add_argument('action',choices=['validate'])
     p.add_argument('--directory',type=Path,default=PROJECT_ROOT/'data'/'tasks')
@@ -154,6 +172,9 @@ def config_for_args(args):
         config.max_turns = args.max_turns
     if getattr(args,'wall_seconds',None) is not None:
         config.wall_seconds = args.wall_seconds
+    for name in ('total_token_budget','request_token_budget','max_output_tokens'):
+        if getattr(args,name,None) is not None:
+            setattr(config,name,getattr(args,name))
     return config.validate()
 
 
@@ -213,14 +234,27 @@ def main(argv=None):
                 prompt += '\n'+args.prompt_file.read_text(encoding='utf-8-sig')
             if args.command == 'run' and not prompt.strip():
                 raise ValueError('Provide -p, --prompt-file or --task')
+            if args.holdout:
+                if not args.holdout_sha256 or not args.evaluation_output:
+                    raise ValueError('--holdout requires --holdout-sha256 and --evaluation-output')
+                if args.holdout.resolve().is_relative_to(args.workspace.resolve()) or args.evaluation_output.resolve().is_relative_to(args.workspace.resolve()):
+                    raise ValueError('Independent suite and report must be outside the model workspace')
             reporter = TerminalReporter()
             agent = Agent(config,args.workspace,task,
                           session_id=getattr(args,'session_id',None),
-                          emit=None if args.json_output else reporter)
+                          emit=None if args.json_output else reporter, replace_budget=getattr(args,'replace_budget',False))
             try:
                 result = agent.run(prompt,mode=args.mode)
             finally:
                 reporter.close()
+            if args.holdout:
+                from .evaluation import evaluate
+                if not agent.task:
+                    raise ValueError('Independent evaluation requires a bound task')
+                independent = evaluate(args.workspace,agent.task,config,args.holdout,args.holdout_sha256,args.evaluation_output,run_result=result)
+                result['independent_evaluation'] = {'status':independent['independent_checks']['status'],
+                    'passed':independent['independent_checks']['passed'],'total':independent['independent_checks']['total'],
+                    'report':str(args.evaluation_output),'model_feedback':False}
             output(result) if args.json_output else print_run(result,args.show_model_summary)
             return 0 if result['status'] in ('answered','needs_input','completed','awaiting_codesys','generated_validation_incomplete') else 2
         if args.command == 'chat':
@@ -279,7 +313,7 @@ def main(argv=None):
                         output(config.describe())
                         print('Settings reloaded. New session: '+agent.session_id)
                 elif text == '/retry':
-                    if agent.state['status'] in ('model_error','interrupted','max_turns','wall_time_limit','stagnation'):
+                    if agent.state['status'] in ('model_error','interrupted','max_turns','wall_time_limit','stagnation','token_budget','context_limit'):
                         print_run(agent.run('',mode=args.mode),args.show_model_summary)
                     else:
                         print('当前没有需要重试的中断请求。')
@@ -295,6 +329,14 @@ def main(argv=None):
             result = lint(args.source.read_text(encoding='utf-8-sig'))
             output(result)
             return 0 if result['status']=='passed' else 2
+        if args.command == 'evaluate':
+            from .evaluation import evaluate
+            run_result = json.loads(args.run_result.read_text(encoding='utf-8-sig')) if args.run_result else None
+            result = evaluate(args.workspace,load_task(args.task),config,args.holdout,args.holdout_sha256,args.output,run_result=run_result)
+            output({k:v for k,v in result.items() if k!='independent_checks'})
+            output({'independent_checks':{k:v for k,v in result['independent_checks'].items() if k!='cases'},
+                    'report':str(args.output)})
+            return 0 if result['independent_checks']['status']=='passed' and result['artifact_validation']=='completed' else 2
         if args.command == 'test':
             from .ltl import monitor
             task = load_task(args.task)

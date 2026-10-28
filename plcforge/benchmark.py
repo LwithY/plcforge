@@ -151,7 +151,7 @@ def dispatch(args, config: Config) -> int:
             started = time.monotonic()
             if framework['kind']=='plcforge':
                 result = Agent(run_config,workspace,task).run(prompt)
-                generation = {'status':result['status'],'session_id':result['session_id']}
+                generation = {k:result.get(k) for k in ('status','session_id','stop_reason','artifact_status','requirement_review','report_status')}
             else:
                 replacements = {'workspace':str(workspace.resolve()),'prompt_file':str(prompt_file.resolve()),'model':model['id']}
                 command = [part.format(**replacements) for part in framework['command']]
@@ -172,6 +172,8 @@ def dispatch(args, config: Config) -> int:
                       'base_url':run_config.base_url,'task_file':str(file),'prompt_sha256':digest(prompt),
                       'generation':generation,'score':evaluation,'usage':result.get('usage'),
                       'usage_missing':result.get('usage_missing',False),
+                      'budget_policy':result.get('budget_policy'), 'usage_records':result.get('usage_records'),
+                      'model_visible_tests':'development only; use evaluate for a separately hashed, external independent suite',
                       'elapsed_seconds':time.monotonic()-started,'limits':matrix.get('limits',{}),
                       'development_run_without_compiler':args.allow_uncompiled,
                       'at':datetime.now(timezone.utc).isoformat()}

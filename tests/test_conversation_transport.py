@@ -97,7 +97,7 @@ class ConversationTests(unittest.TestCase):
         result=Agent(Config(),self.workspace,task,provider).run(task_prompt(task))
         self.assertEqual(result['status'],'awaiting_codesys')
         self.assertEqual(result['validation']['tests']['status'],'passed')
-        self.assertEqual(result['request_model_calls'],3)
+        self.assertEqual(result['request_model_calls'],2)
     def test_ambiguous_request_with_real_writes_cannot_skip_gate(self):
         task=load_task(ROOT/'data/tasks/S01.json')
         message=call('write_file',{'path':'src/PLC_PRG.st','content':MOTOR},'source')
@@ -269,10 +269,10 @@ class TransportTests(unittest.TestCase):
             with patch('plcforge.provider.request.urlopen',side_effect=[first,response(valid),response(finish)]) as send:
                 result=Agent(Config(max_retries=1),Path(tmp),task).run(task_prompt(task))
             self.assertEqual(result['status'],'awaiting_codesys')
-            self.assertEqual(result['tool_calls'],2)
+            self.assertEqual(result['tool_calls'],1)
             self.assertEqual(result['transport_retries'],1)
             self.assertFalse((Path(tmp)/'src/UNWANTED.st').exists())
-            self.assertEqual(send.call_count,3)
+            self.assertEqual(send.call_count,2)
 
 
 if __name__=='__main__':

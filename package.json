@@ -1,6 +1,6 @@
 {
   "name": "plcforge",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "A terminal PLC Structured Text agent with configurable LLMs and real CODESYS compilation",
   "license": "MIT",
   "author": "LwithY",
@@ -14,7 +14,7 @@
   "files": [
     "bin/*.cjs", "npm/*.cjs", "npm/runtime-manifest.json", "npm/defaults/*.json",
     "plcforge/**/*.py", "plcforge/knowledge/*.md", "data/tasks/*.json", "experiments/matrix.json",
-    "docs/LLM_SETTINGS.md", "docs/TERMINAL_AND_TRANSCRIPTS.md", "docs/NPM_INSTALL.md",
+    "docs/LLM_SETTINGS.md", "docs/TERMINAL_AND_TRANSCRIPTS.md", "docs/NPM_INSTALL.md", "docs/AGENT_IMPROVEMENTS_0.1.5.md", "docs/validation/*.json",
     "LICENSE", "THIRD_PARTY_NOTICES.md", "settings.example.json"
   ],
   "scripts": {

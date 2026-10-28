@@ -40,7 +40,7 @@ def write_json(path: Path, value, private: bool = False) -> None:
     # Preserve model reasoning in private session state; redact secrets in all cases.
     fd, name = tempfile.mkstemp(prefix='.tmp-', dir=str(path.parent))
     try:
-        with os.fdopen(fd, 'w', encoding='utf-8') as stream:
+        with os.fdopen(fd, 'w', encoding='utf-8', newline='\n') as stream:
             stream.write(redact(data))
         os.replace(name, path)
     finally:

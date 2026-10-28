@@ -266,14 +266,15 @@ class CompilerAgentTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             result = Agent(Config(max_turns=3),Path(tmp),task,provider).run(task_prompt(task))
             self.assertEqual(result['status'],'awaiting_codesys')
-            self.assertEqual(result['model_calls'],2)
+            self.assertEqual(result['model_calls'],1)  # Host completes immediately after the edit.
     def test_finish_before_a_later_write_does_not_approve_mutation(self):
         task = load_task(ROOT/'data'/'tasks'/'S01.json')
         msg = call('finish_task',{'summary':'done'},'finish')
         msg['tool_calls'] += call('write_file',{'path':'src/PLC_PRG.st','content':MOTOR.replace('Motor := TRUE;','Motor := FALSE;')},'write')['tool_calls']
-        provider = ScriptedProvider([call('write_file',{'path':'src/PLC_PRG.st','content':MOTOR}),msg])
+        provider = ScriptedProvider([msg])
         with tempfile.TemporaryDirectory() as tmp:
-            result = Agent(Config(max_turns=2),Path(tmp),task,provider).run(task_prompt(task))
+            Workspace(Path(tmp)).write('src/PLC_PRG.st',MOTOR)
+            result = Agent(Config(max_turns=1),Path(tmp),task,provider).run(task_prompt(task))
             self.assertEqual(result['status'],'max_turns')
     def test_missing_compile_metric_is_null(self):
         records = [{'framework':'fixture','model_label':'A','score':{'compile':{'status':'unavailable'},

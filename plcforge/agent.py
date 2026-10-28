@@ -8,8 +8,10 @@ import time
 import uuid
 
 from .compiler import CodesysCompiler
+from .budget import BudgetExceeded, account, initialize, preflight
 from .config import Config
 from .context import compact, repair_pairing
+from .evidence import lean, save_report
 from .intent import READ_TOOLS, asks_model_identity, request_mode
 from .provider import ModelError, OpenAIProvider, request_payload
 from .progress import PublicTextBuffer
@@ -28,7 +30,9 @@ The runtime supplies the configured model ID below; report that ID when asked.
 For implementation work, provide a brief user-facing progress note in content
 before choosing tools: state the next action and any already verified milestone.
 Keep this note concise; do not output private chain-of-thought or internal reasoning.
-Use plan_tasks to update stages as work proceeds. A planned/completed label is not
+The host automatically validates source/test edits and archives successful artifacts.
+Do not spend another model request on known validation results, plan updates or finish_task.
+A planned/completed label is not
 evidence of tests or compilation; only tool results establish those outcomes.
 The following implementation rules apply ONLY to code requests or ST/test edits,
 not to normal answers, explanations, read-only reviews or questions:
@@ -62,7 +66,7 @@ short summary promptly. Avoid stylistic rewriting or repeatedly querying an abse
 
 class Agent:
     def __init__(self, config: Config, workspace: Path, task: dict | None = None,
-                 provider=None, session_id: str | None = None, emit=None):
+                 provider=None, session_id: str | None = None, emit=None, replace_budget=False):
         self.config, self.task = config, task
         self.workspace = Workspace(workspace)
         self.provider = provider or OpenAIProvider(config)
@@ -94,9 +98,13 @@ class Agent:
                           'estimated_budget_tokens':0, 'model_calls':0, 'tool_calls':0, 'compactions':0,
                           'status':'created'}
         self.registry = ToolRegistry(self.workspace, CodesysCompiler(config.codesys), self.state, self.task)
+        self.state['context_archive_dir'] = str(self.directory/'context')
+        initialize(self.state, config, replace_budget)
+        self.attempt_estimate = None
         if isinstance(self.provider,OpenAIProvider):
             self.provider.on_retry = self.provider_retry
             self.provider.on_attempt = self.provider_attempt
+            self.provider.before_attempt = self.prepare_attempt
 
     def event(self, kind, data):
         safe = json.loads(redact(json.dumps(data,ensure_ascii=False)))
@@ -120,16 +128,29 @@ class Agent:
 
     def provider_attempt(self, details):
         if details['phase']=='start':
+            self.state['model_attempts'] = self.state.get('model_attempts', 0)+1
             self.text_buffer = PublicTextBuffer()
             self.attempt_public_text = ''
             self.event('model_attempt_start',{'attempt':details['attempt']})
         elif details['phase']=='complete':
             self.flush_public_text()
         elif details['phase']=='error':
+            if self.attempt_estimate:
+                account(self.state, self.attempt_estimate, failed_attempt=True, usage_complete=False)
+                self.attempt_estimate = None
             details = dict(details, partial_public_content=self.attempt_public_text, discarded=True)
             self.text_buffer = PublicTextBuffer()
         if self.transcript:
             self.transcript.attempt(details)
+
+    def prepare_attempt(self, messages, schemas):
+        estimate = preflight(self.state, self.config, messages, schemas)
+        self.state['last_preflight'] = estimate
+        self.save()
+        if not estimate['allowed']:
+            raise BudgetExceeded(estimate['reason'])
+        self.attempt_estimate = estimate
+        return estimate['reserved_output_tokens']
 
     def model_text(self, text):
         # Only visible content reaches this callback; reasoning_content stays private.
@@ -144,8 +165,9 @@ class Agent:
             self.event('model_text',{'text':visible})
 
     def finish(self, reason, final_text, started, mode):
+        self.state['stop_reason'] = reason
         self.state['status'] = reason
-        if reason=='completed':
+        if reason=='completed' or self.state.get('artifact', {}).get('status')=='completed':
             self.state['pending_implementation']=False
         self.state['elapsed_seconds'] = self.state.get('elapsed_seconds',0)+time.monotonic()-started
         self.save()
@@ -160,12 +182,32 @@ class Agent:
                        compile_history=self.state.get('compile_history',[]),test_history=self.state.get('test_history',[]),
                        final_message_displayed=self.has_terminal_output and bool(final_text) and final_text==self.last_public_message,
                        transcript_path=str(self.transcript.path))
+        summary.update(stop_reason=reason, artifact_status=self.state.get('validation', {}).get('status', 'not_checked'),
+                       requirement_review=self.state.get('validation', {}).get('requirement_review', 'pending_confirmation'),
+                       artifact=self.state.get('artifact'), report_status='saved',
+                       context_measurements=self.state.get('context_measurements', []),
+                       usage_records=self.state.get('usage_records', []), budget_policy=self.state['budget_policy'],
+                       model_attempts=self.state.get('model_attempts',self.state['model_calls']),
+                       cached_input_tokens=self.state.get('cached_input_tokens',0),
+                       remaining_estimated_tokens=max(0,self.config.total_token_budget-self.state['estimated_budget_tokens']),
+                       last_preflight=self.state.get('last_preflight'), budget_changes=self.state.get('budget_changes', []),
+                       limits={'turns_per_run':self.config.max_turns,'wall_seconds_per_run':self.config.wall_seconds,
+                               'tokens_scope':'session cumulative including all requests and resumes'})
         self.transcript.data['mode'] = mode
+        self.transcript.data['outcome'] = {k:summary[k] for k in ('stop_reason','artifact_status','requirement_review','report_status')}
         self.transcript.finish(reason,final_text,summary['validation'])
         write_json(self.directory/'summary.json',summary)
         write_json(self.workspace.root/'.plcforge'/'last_run.json',summary)
         self.event('completed',{'status':reason,'session_id':self.session_id})
         return summary
+
+    def host_validate(self):
+        self.event('validation_start', {'origin':'host'})
+        gate = self.registry.final_gate()
+        self.event('validation_gate', lean(gate))
+        if gate['status'] in ('completed', 'awaiting_codesys', 'generated_validation_incomplete'):
+            self.registry.archive(gate)
+        return gate
 
     def run(self, prompt: str, mode='auto') -> dict:
         started = time.monotonic()
@@ -199,7 +241,9 @@ class Agent:
             self.state['messages'].append({'role':'user','content':prompt})
         self.state['messages'][0]={'role':'system','content':system_prompt}
         self.state['status'] = 'running'
-        self.event('request_started',{'mode':turn_mode})
+        self.transcript.data['budget_policy'] = self.state['budget_policy']
+        self.event('request_started',{'mode':turn_mode,'budget_policy':self.state['budget_policy'],
+                                     'consumed_tokens':self.state['estimated_budget_tokens']})
         self.save()
         if turn_mode!='code' and asks_model_identity(prompt):
             answer='当前配置使用的模型是 '+self.config.model+'，通过 '+self.config.base_url+' 调用。'
@@ -222,35 +266,40 @@ class Agent:
                 self.state['messages'], changed = compact(self.state['messages'],self.config.context_chars,self.state)
                 if changed:
                     self.state['compactions'] += 1
-                    self.event('compaction', {'retained_messages':len(self.state['messages'])})
+                    self.event('compaction', dict(self.state['context_measurements'][-1], retained_messages=len(self.state['messages'])))
                 if len(json.dumps(self.state['messages'],ensure_ascii=False)) > self.config.context_chars*2:
                     reason = 'context_limit'
                     break
                 schemas=([t for t in self.registry.schemas if t['function']['name'] in READ_TOOLS]
                          if turn_mode=='answer' else self.registry.schemas)
+                estimate = preflight(self.state, self.config, self.state['messages'], schemas)
+                self.state['last_preflight'] = estimate
+                self.event('budget_preflight', estimate)
+                if not estimate['allowed']:
+                    reason = 'token_budget'
+                    break
                 self.state['model_rounds'] = self.state.get('model_rounds',self.state['model_calls'])+1
-                round_number = self.transcript.start_round(request_payload(self.config,self.state['messages'],schemas),
+                round_number = self.transcript.start_round(request_payload(self.config,self.state['messages'],schemas,estimate['reserved_output_tokens']),
                     self.config.base_url.rstrip('/')+'/chat/completions',turn+1,self.state['model_rounds'])
                 self.event('model_start', {'turn':turn+1, 'round':round_number, 'model':self.config.model})
                 self.attempt_public_text = ''
                 self.text_buffer = PublicTextBuffer()
-                reply = self.provider.complete(self.state['messages'], schemas,
-                                               on_text=self.model_text, deadline=deadline)
+                options = {'on_text':self.model_text, 'deadline':deadline}
+                if isinstance(self.provider, OpenAIProvider):
+                    options['max_output_tokens'] = estimate['reserved_output_tokens']
+                reply = self.provider.complete(self.state['messages'], schemas, **options)
                 self.transcript.response(reply)
                 if not self.attempt_public_text:
                     self.model_text(reply.message.get('content') or '')
                 self.flush_public_text()
                 self.last_public_message = reply.message.get('content') or ''
                 self.state['model_calls'] += 1
-                for key in ('prompt_tokens','completion_tokens','total_tokens'):
-                    self.state['usage'][key] += reply.usage.get(key,0) or 0
-                estimate = reply.usage.get('total_tokens') or (len(json.dumps(self.state['messages'],ensure_ascii=False))//3 +
-                                                              len(json.dumps(reply.message,ensure_ascii=False))//3)
-                self.state['estimated_budget_tokens'] += estimate
-                if not reply.usage or not getattr(reply,'usage_complete',True):
-                    self.state['usage_missing'] = True
+                record = account(self.state, estimate, reply.usage, usage_complete=getattr(reply,'usage_complete',True))
+                self.attempt_estimate = None
                 self.event('model_end', {'finish_reason':reply.finish_reason,'usage':reply.usage,
-                                         'elapsed_seconds':reply.elapsed_seconds})
+                                         'elapsed_seconds':reply.elapsed_seconds, 'accounting':record,
+                                         'cumulative_usage':self.state['usage'], 'cached_input_tokens':self.state['cached_input_tokens'],
+                                         'remaining_estimated_tokens':max(0,self.config.total_token_budget-self.state['estimated_budget_tokens'])})
                 # Never execute a tool from a truncated/incomplete response.
                 if reply.finish_reason not in ('stop','tool_calls'):
                     self.event('truncated_response', {'finish_reason':reply.finish_reason})
@@ -291,12 +340,13 @@ class Agent:
                         except (ValueError, OSError, KeyError, TypeError) as exc:
                             result = {'error':redact(str(exc))}
                         encoded = json.dumps(result,ensure_ascii=False)
-                        # Full evidence is on disk; only bounded feedback goes back to the model.
-                        if len(encoded) > 18000:
-                            evidence = self.directory / ('tool-%05d.json' % self.state['tool_calls'])
-                            write_json(evidence,result)
-                            encoded = json.dumps({'truncated':True,'preview':encoded[:15000],
-                                                  'note':'Use targeted tools to inspect source; full evidence kept in session.'})
+                        if len(encoded.encode('utf-8')) > 6000:
+                            identifier = save_report(self.workspace.root, result)
+                            encoded = json.dumps({'report_id':identifier,'status':result.get('status'),
+                                                  'summary':lean(result), 'note':'Use read_evidence for full details.'},ensure_ascii=False)
+                            if len(encoded) > 5000:
+                                encoded = json.dumps({'report_id':identifier,'status':result.get('status'),
+                                                      'preview':encoded[:2000]})
                         self.state['tool_calls'] += 1
                         self.state['messages'].append({'role':'tool', 'tool_call_id':call['id'], 'content':encoded})
                         elapsed = time.monotonic()-tool_started
@@ -310,16 +360,21 @@ class Agent:
                         if repeats[signature] >= self.config.max_repeated_results:
                             reason = 'stagnation'
                         self.save()
-                    if reason == 'stagnation':
-                        break
                     if calls[-1]['function']['name']=='request_clarification' and not result.get('error'):
                         self.state['pending_implementation']=True
                         final_text=result['question']
                         reason='needs_input'
                         break
-                    if finish_result and finish_result.get('status') in ('completed','awaiting_codesys','generated_validation_incomplete'):
-                        final_text = finish_summary
-                        reason = finish_result['status']
+                    if turn_mode=='code' and self.registry.sources() and any(
+                            c['function']['name'] in ('write_file','edit_file','test_st','compile_st','finish_task') for c in calls):
+                        gate = self.host_validate()
+                        if gate['status'] in ('completed','awaiting_codesys','generated_validation_incomplete'):
+                            final_text = finish_summary or 'Host validation: '+gate['status']+'. Evidence and source snapshot saved.'
+                            reason = 'token_budget' if self.state['estimated_budget_tokens'] >= self.config.total_token_budget else gate['status']
+                            break
+                        self.state['messages'].append({'role':'user','content':
+                            'Host validation found problems. Repair using this feedback:\n'+json.dumps(lean(gate),ensure_ascii=False)})
+                    if reason == 'stagnation':
                         break
                     continue
                 final_text = reply.message.get('content') or ''
@@ -328,12 +383,10 @@ class Agent:
                         raise ModelError('The model returned an empty answer')
                     reason='answered'
                     break
-                self.event('validation_start',{})
-                gate = self.registry.final_gate()
-                self.event('validation_gate',gate)
+                gate = self.host_validate()
                 if gate['status'] == 'needs_repair':
                     self.state['messages'].append({'role':'user','content':
-                        'Completion gate found problems. Repair using this feedback:\n'+json.dumps(gate,ensure_ascii=False)[:16000]})
+                        'Completion gate found problems. Repair using this feedback:\n'+json.dumps(lean(gate),ensure_ascii=False)[:6000]})
                     self.save()
                     continue
                 reason = gate['status']
@@ -342,8 +395,18 @@ class Agent:
             reason = 'interrupted'
             self.state['messages'] = repair_pairing(self.state['messages'])
         except (ModelError, ValueError) as exc:
-            reason = 'model_error'
-            self.state['usage_missing']=True
+            reason = 'token_budget' if isinstance(exc, BudgetExceeded) else 'model_error'
+            if reason=='model_error':
+                self.state['usage_missing']=True
             self.transcript.close_pending(reason,redact(str(exc)))
             self.event('error', {'message':redact(str(exc))})
+        if turn_mode=='code' and reason not in ('needs_input','completed','awaiting_codesys','generated_validation_incomplete') and self.registry.sources():
+            # Budget, model error and interruption keep their real stop reason. Local
+            # evidence and recoverable artifacts are finalized without a provider call.
+            try:
+                gate = self.host_validate()
+                if not final_text:
+                    final_text = 'Stopped: '+reason+'. Artifact validation: '+gate['status']
+            except (ValueError, OSError, KeyError, TypeError) as exc:
+                self.event('error', {'message':'Local finalization: '+redact(str(exc))})
         return self.finish(reason,final_text,started,turn_mode)

@@ -1,0 +1,10 @@
+{
+  "sha256": "a1f962bb761cc76051b320e20dca6958f00ad5fc637c602b3c0158f41a7306fe",
+  "version": "P01-independent-v1-reconstructed",
+  "contract_sha256": "b5bf1e41d468f09b690d754e6fc4107ac3424a17c5f77ed8b4beafdaf653c30b",
+  "cases": 387,
+  "scans": 1604,
+  "development_cases": 8,
+  "development_scans": 76,
+  "development_suite_sha256": "00740c48b299d7f8fe0d5659334e5bc3246c47de84731205afc6d3cf68f04fd1"
+}

@@ -42,6 +42,7 @@ LABELS = {'list_files':'查看工程文件', 'read_file':'读取文件', 'write_
           'plan_tasks':'更新任务计划', 'lint_st':'检查 ST 语法', 'test_st':'运行扫描测试',
           'compile_st':'调用 CODESYS 编译', 'finish_task':'核验任务完成条件',
           'request_clarification':'确认缺失要求'}
+LABELS['read_evidence'] = '读取开发测试证据'
 
 
 class TerminalReporter:
@@ -100,7 +101,10 @@ class TerminalReporter:
             self.stream.flush()
 
     def __call__(self, kind, value):
-        if kind=='model_start':
+        if kind=='request_started' and 'budget_policy' in value:
+            self.line('[预算] 会话累计上限 %s | 已计量/估算 %s token；恢复沿用已保存的预算。' % (
+                value['budget_policy']['total_token_budget'],value['consumed_tokens']))
+        elif kind=='model_start':
             self.line('[模型] 第 %d 轮 | %s' % (value['round'],value['model']))
             self.busy('等待模型响应')
         elif kind=='model_attempt_start' and value['attempt']>1:
@@ -114,6 +118,15 @@ class TerminalReporter:
             self.stream.flush()
         elif kind=='model_end':
             self.line('[模型] 本轮响应完成 (%.1fs)' % value['elapsed_seconds'])
+            usage = value.get('cumulative_usage', {})
+            if usage:
+                self.line('  累计输入 %s | 缓存命中 %s | 输出 %s | 估算剩余 %s token' % (
+                    usage.get('prompt_tokens',0), value.get('cached_input_tokens',0), usage.get('completion_tokens',0),
+                    value.get('remaining_estimated_tokens','unknown')))
+                if not value.get('accounting', {}).get('usage_complete', True):
+                    self.line('  用量不完整；预算含估算值，现金费用以服务商账单为准。')
+        elif kind=='budget_preflight' and not value['allowed']:
+            self.line('[停止] 预算预估不足：'+value['reason'])
         elif kind=='tool_start':
             name, args = value['name'],value.get('arguments',{})
             detail = args.get('path') or args.get('query') or args.get('pattern') or ''
@@ -127,6 +140,16 @@ class TerminalReporter:
                 self.line('  '+str(result['error'])[:300])
             if name in ('write_file','edit_file') and not result.get('error'):
                 self.line('  已保存 '+result['path'])
+                for field, label in (('local_syntax','语法检查'), ('interface','接口检查')):
+                    check = result.get(field, {})
+                    if check:
+                        self.line('  文件已保存；'+label+'：'+check.get('status','unknown'))
+                        for diagnostic in check.get('diagnostics', [])[:3]:
+                            if isinstance(diagnostic, dict):
+                                self.line('  %s:%s:%s [%s] %s' % (diagnostic.get('file'),diagnostic.get('line'),
+                                    diagnostic.get('column'),diagnostic.get('code'),diagnostic.get('message')))
+                if result.get('unresolved_diagnostics'):
+                    self.line('  同一错误仍未解决；可按 diagnostic_history_id 查看上一版、差异和诊断。')
             if name=='plan_tasks' and not result.get('error'):
                 for step in result.get('plan',[]):
                     mark = {'completed':'已完成','in_progress':'进行中','pending':'待执行'}.get(step['status'],step['status'])
@@ -137,7 +160,7 @@ class TerminalReporter:
             if name=='compile_st' and not result.get('error'):
                 self.line('  CODESYS: '+str(result.get('status')))
         elif kind=='compaction':
-            self.line('[进展] 已保存上下文检查点')
+            self.line('[进展] 上下文压缩 %s → %s 字符' % (value.get('before_chars','?'),value.get('after_chars','?')))
         elif kind=='validation_start':
             self.busy('核验测试和 CODESYS 编译结果，必要时重新执行')
         elif kind=='validation_gate':

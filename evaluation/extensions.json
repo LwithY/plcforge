@@ -1,0 +1,37 @@
+{
+  "version": "extensions-v1",
+  "scope": "Development subset checks and real offline compilation; no CODESYS runtime or physical PLC evidence",
+  "cases": [
+    {
+      "id": "edge",
+      "local_status": "passed",
+      "native_should_pass": true,
+      "sources": {"src/PLC_PRG.st": "PROGRAM PLC_PRG\nVAR_INPUT Start : BOOL; END_VAR\nVAR_OUTPUT Out : BOOL; END_VAR\nVAR edge : R_TRIG; END_VAR\nedge(CLK := Start);\nOut := edge.Q;\nEND_PROGRAM\n"},
+      "tests": [{"name":"edge_hold_release_retrigger","scans":[{"inputs":{"Start":false},"expect":{"Out":false}},{"inputs":{"Start":true},"expect":{"Out":true}},{"inputs":{"Start":true},"expect":{"Out":false}},{"inputs":{"Start":false},"expect":{"Out":false}},{"inputs":{"Start":true},"expect":{"Out":true}}]}]
+    },
+    {
+      "id": "timer",
+      "local_status": "passed",
+      "native_should_pass": true,
+      "sources": {"src/PLC_PRG.st": "PROGRAM PLC_PRG\nVAR_INPUT Start : BOOL; END_VAR\nVAR_OUTPUT Out : BOOL; END_VAR\nVAR timer : TON; END_VAR\ntimer(IN := Start, PT := T#40MS);\nOut := timer.Q;\nEND_PROGRAM\n"},
+      "tests": [{"name":"timer_exact_boundary_and_reset","scans":[{"inputs":{"Start":true},"expect":{"Out":false}},{"inputs":{"Start":true},"expect":{"Out":false}},{"inputs":{"Start":true},"expect":{"Out":true}},{"inputs":{"Start":false},"expect":{"Out":false}}]}]
+    },
+    {
+      "id": "array",
+      "local_status": "unsupported",
+      "native_should_pass": true,
+      "sources": {"src/PLC_PRG.st": "PROGRAM PLC_PRG\nVAR_INPUT Start : BOOL; END_VAR\nVAR_OUTPUT Out : BOOL; END_VAR\nVAR buffer : ARRAY[0..2] OF BOOL; END_VAR\nbuffer[0] := Start;\nOut := buffer[0];\nEND_PROGRAM\n"},
+      "tests": [{"name":"array_passthrough_runtime_pending","scans":[{"inputs":{"Start":true},"expect":{"Out":true}}]}]
+    },
+    {
+      "id": "multiple_function_blocks",
+      "local_status": "unsupported",
+      "native_should_pass": true,
+      "sources": {
+        "src/RelayFB.st": "FUNCTION_BLOCK RelayFB\nVAR_INPUT Signal : BOOL; END_VAR\nVAR_OUTPUT Value : BOOL; END_VAR\nValue := Signal;\nEND_FUNCTION_BLOCK\n",
+        "src/PLC_PRG.st": "PROGRAM PLC_PRG\nVAR_INPUT Start : BOOL; END_VAR\nVAR_OUTPUT Out : BOOL; END_VAR\nVAR first : RelayFB; second : RelayFB; END_VAR\nfirst(Signal := Start);\nsecond(Signal := first.Value);\nOut := second.Value;\nEND_PROGRAM\n"
+      },
+      "tests": [{"name":"composed_fb_runtime_pending","scans":[{"inputs":{"Start":true},"expect":{"Out":true}}]}]
+    }
+  ]
+}
