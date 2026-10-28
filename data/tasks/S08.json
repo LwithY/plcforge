@@ -1,0 +1,113 @@
+{
+  "id": "S08",
+  "title": "Mode selection and permit",
+  "prompt": "Remote selects AutoCmd when true and ManualCmd otherwise. Run = selected command AND Permit AND NOT Fault. Fault and Permit always override either mode. Output Mode INT is 1 for Remote and 0 otherwise.",
+  "interface": {
+    "pou": "PLC_PRG",
+    "kind": "PROGRAM",
+    "inputs": {
+      "Remote": "BOOL",
+      "AutoCmd": "BOOL",
+      "ManualCmd": "BOOL",
+      "Permit": "BOOL",
+      "Fault": "BOOL"
+    },
+    "outputs": {
+      "Run": "BOOL",
+      "Mode": "INT"
+    }
+  },
+  "entry_file": "src/PLC_PRG.st",
+  "scan_ms": 20,
+  "scan_semantics": "Inputs sampled before scan; outputs checked after same scan. Variables persist between scans. Each test starts at declarations initial values. Unspecified inputs retain their last value. Timer first enabling scan ET=0.",
+  "specs": [
+    {
+      "id": "P1",
+      "formula": "G ((!Permit | Fault) -> !Run)"
+    },
+    {
+      "id": "P2",
+      "formula": "G (Remote -> (Mode = 1))"
+    },
+    {
+      "id": "P3",
+      "formula": "G (!Remote -> (Mode = 0))"
+    },
+    {
+      "id": "P4",
+      "formula": "G ((Remote & AutoCmd & Permit & !Fault) -> Run)"
+    }
+  ],
+  "tests": [
+    {
+      "name": "mode_priority",
+      "scans": [
+        {
+          "inputs": {
+            "Remote": false,
+            "AutoCmd": true,
+            "ManualCmd": false,
+            "Permit": true,
+            "Fault": false
+          },
+          "expect": {
+            "Mode": 0,
+            "Run": false
+          }
+        },
+        {
+          "inputs": {
+            "Remote": true
+          },
+          "expect": {
+            "Mode": 1,
+            "Run": true
+          }
+        },
+        {
+          "inputs": {
+            "Fault": true
+          },
+          "expect": {
+            "Run": false
+          }
+        },
+        {
+          "inputs": {
+            "Fault": false,
+            "Permit": false
+          },
+          "expect": {
+            "Run": false
+          }
+        },
+        {
+          "inputs": {
+            "Remote": false,
+            "ManualCmd": true,
+            "Permit": true
+          },
+          "expect": {
+            "Mode": 0,
+            "Run": true
+          }
+        }
+      ]
+    }
+  ],
+  "tags": [
+    "mode",
+    "arbitration",
+    "combinational"
+  ],
+  "difficulty": "easy",
+  "provenance": {
+    "source_type": "synthetic_original",
+    "source_url": null,
+    "synthesis_process": "Authored from a named industrial control scenario; fixed interface, priority, scan convention, boundary tests and LTL obligations were designed together.",
+    "adaptations": "Deterministic I/O abstraction; no physical I/O addressing or online control.",
+    "rationale": "Mode selection and permit is a common PLC control pattern; explicit limits make the task testable.",
+    "review_process": "Automated schema, reference-fixture scan tests and finite-trace LTL consistency checks. Human PLC scenario/spec review is still required.",
+    "review_status": "pending_human_review"
+  }
+}

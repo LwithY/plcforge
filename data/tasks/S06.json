@@ -1,0 +1,106 @@
+{
+  "id": "S06",
+  "title": "Emergency gated on delay",
+  "prompt": "Use one TON instance with PT=T#60ms, call every scan with IN=Enable AND NOT EStop. Output Ready is TON.Q AND NOT EStop. Timer initial enabling scan ET=0; following enabled scans add 20ms. EStop immediately clears Ready and timer.",
+  "interface": {
+    "pou": "PLC_PRG",
+    "kind": "PROGRAM",
+    "inputs": {
+      "Enable": "BOOL",
+      "EStop": "BOOL"
+    },
+    "outputs": {
+      "Ready": "BOOL"
+    }
+  },
+  "entry_file": "src/PLC_PRG.st",
+  "scan_ms": 20,
+  "scan_semantics": "Inputs sampled before scan; outputs checked after same scan. Variables persist between scans. Each test starts at declarations initial values. Unspecified inputs retain their last value. Timer first enabling scan ET=0.",
+  "specs": [
+    {
+      "id": "P1",
+      "formula": "G (EStop -> !Ready)"
+    },
+    {
+      "id": "P2",
+      "formula": "G (!Enable -> !Ready)"
+    },
+    {
+      "id": "P3",
+      "formula": "G ((Enable & !EStop & X (Enable & !EStop & X (Enable & !EStop & X (Enable & !EStop)))) -> X X X Ready)"
+    }
+  ],
+  "tests": [
+    {
+      "name": "delay_reset",
+      "scans": [
+        {
+          "inputs": {
+            "Enable": true,
+            "EStop": false
+          },
+          "expect": {
+            "Ready": false
+          }
+        },
+        {
+          "inputs": {},
+          "expect": {
+            "Ready": false
+          }
+        },
+        {
+          "inputs": {},
+          "expect": {
+            "Ready": false
+          }
+        },
+        {
+          "inputs": {},
+          "expect": {
+            "Ready": true
+          }
+        },
+        {
+          "inputs": {
+            "EStop": true
+          },
+          "expect": {
+            "Ready": false
+          }
+        },
+        {
+          "inputs": {
+            "EStop": false
+          },
+          "expect": {
+            "Ready": false
+          }
+        },
+        {
+          "inputs": {
+            "Enable": false
+          },
+          "expect": {
+            "Ready": false
+          }
+        }
+      ]
+    }
+  ],
+  "tags": [
+    "timer",
+    "TON",
+    "reset"
+  ],
+  "difficulty": "medium",
+  "provenance": {
+    "source_type": "synthetic_original",
+    "source_url": null,
+    "synthesis_process": "Authored from a named industrial control scenario; fixed interface, priority, scan convention, boundary tests and LTL obligations were designed together.",
+    "adaptations": "Deterministic I/O abstraction; no physical I/O addressing or online control.",
+    "rationale": "Emergency gated on delay is a common PLC control pattern; explicit limits make the task testable.",
+    "review_process": "Automated schema, reference-fixture scan tests and finite-trace LTL consistency checks. Human PLC scenario/spec review is still required.",
+    "review_status": "pending_human_review"
+  }
+}

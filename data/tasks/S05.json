@@ -1,0 +1,100 @@
+{
+  "id": "S05",
+  "title": "Analog input scaling",
+  "prompt": "Raw is INT. Fault is true outside 0..27648. Clamp Raw to that range and compute Eng REAL as clamped/27648*100. Use real arithmetic. Endpoints are 0 and 100 percent.",
+  "interface": {
+    "pou": "PLC_PRG",
+    "kind": "PROGRAM",
+    "inputs": {
+      "Raw": "INT"
+    },
+    "outputs": {
+      "Eng": "REAL",
+      "Fault": "BOOL"
+    }
+  },
+  "entry_file": "src/PLC_PRG.st",
+  "scan_ms": 20,
+  "scan_semantics": "Inputs sampled before scan; outputs checked after same scan. Variables persist between scans. Each test starts at declarations initial values. Unspecified inputs retain their last value. Timer first enabling scan ET=0.",
+  "specs": [
+    {
+      "id": "P1",
+      "formula": "G ((Eng >= 0) & (Eng <= 100))"
+    },
+    {
+      "id": "P2",
+      "formula": "G ((Raw <= 0) -> (Eng = 0))"
+    },
+    {
+      "id": "P3",
+      "formula": "G ((Raw >= 27648) -> (Eng = 100))"
+    }
+  ],
+  "tests": [
+    {
+      "name": "scale_and_clamp",
+      "scans": [
+        {
+          "inputs": {
+            "Raw": -1
+          },
+          "expect": {
+            "Eng": 0.0,
+            "Fault": true
+          }
+        },
+        {
+          "inputs": {
+            "Raw": 0
+          },
+          "expect": {
+            "Eng": 0.0,
+            "Fault": false
+          }
+        },
+        {
+          "inputs": {
+            "Raw": 13824
+          },
+          "expect": {
+            "Eng": 50.0,
+            "Fault": false
+          }
+        },
+        {
+          "inputs": {
+            "Raw": 27648
+          },
+          "expect": {
+            "Eng": 100.0,
+            "Fault": false
+          }
+        },
+        {
+          "inputs": {
+            "Raw": 30000
+          },
+          "expect": {
+            "Eng": 100.0,
+            "Fault": true
+          }
+        }
+      ]
+    }
+  ],
+  "tags": [
+    "analog",
+    "conversion",
+    "bounds"
+  ],
+  "difficulty": "easy",
+  "provenance": {
+    "source_type": "synthetic_original",
+    "source_url": null,
+    "synthesis_process": "Authored from a named industrial control scenario; fixed interface, priority, scan convention, boundary tests and LTL obligations were designed together.",
+    "adaptations": "Deterministic I/O abstraction; no physical I/O addressing or online control.",
+    "rationale": "Analog input scaling is a common PLC control pattern; explicit limits make the task testable.",
+    "review_process": "Automated schema, reference-fixture scan tests and finite-trace LTL consistency checks. Human PLC scenario/spec review is still required.",
+    "review_status": "pending_human_review"
+  }
+}

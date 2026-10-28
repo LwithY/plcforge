@@ -1,0 +1,117 @@
+{
+  "id": "S02",
+  "title": "Directional drive interlock",
+  "prompt": "FwdCmd and RevCmd start the corresponding retained direction only when idle. While running, opposite command alone is ignored until Stop. Stop or simultaneous direction commands clears both directions. Initially both outputs false.",
+  "interface": {
+    "pou": "PLC_PRG",
+    "kind": "PROGRAM",
+    "inputs": {
+      "FwdCmd": "BOOL",
+      "RevCmd": "BOOL",
+      "Stop": "BOOL"
+    },
+    "outputs": {
+      "FwdRun": "BOOL",
+      "RevRun": "BOOL"
+    }
+  },
+  "entry_file": "src/PLC_PRG.st",
+  "scan_ms": 20,
+  "scan_semantics": "Inputs sampled before scan; outputs checked after same scan. Variables persist between scans. Each test starts at declarations initial values. Unspecified inputs retain their last value. Timer first enabling scan ET=0.",
+  "specs": [
+    {
+      "id": "P1",
+      "formula": "G (!(FwdRun & RevRun))"
+    },
+    {
+      "id": "P2",
+      "formula": "G ((Stop | (FwdCmd & RevCmd)) -> (!FwdRun & !RevRun))"
+    }
+  ],
+  "tests": [
+    {
+      "name": "direction_change_requires_stop",
+      "scans": [
+        {
+          "inputs": {
+            "FwdCmd": true,
+            "RevCmd": false,
+            "Stop": false
+          },
+          "expect": {
+            "FwdRun": true,
+            "RevRun": false
+          }
+        },
+        {
+          "inputs": {
+            "FwdCmd": false,
+            "RevCmd": true
+          },
+          "expect": {
+            "FwdRun": true,
+            "RevRun": false
+          }
+        },
+        {
+          "inputs": {
+            "Stop": true
+          },
+          "expect": {
+            "FwdRun": false,
+            "RevRun": false
+          }
+        },
+        {
+          "inputs": {
+            "Stop": false
+          },
+          "expect": {
+            "FwdRun": false,
+            "RevRun": true
+          }
+        },
+        {
+          "inputs": {
+            "FwdCmd": true
+          },
+          "expect": {
+            "FwdRun": false,
+            "RevRun": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "simultaneous_idle",
+      "scans": [
+        {
+          "inputs": {
+            "FwdCmd": true,
+            "RevCmd": true,
+            "Stop": false
+          },
+          "expect": {
+            "FwdRun": false,
+            "RevRun": false
+          }
+        }
+      ]
+    }
+  ],
+  "tags": [
+    "interlock",
+    "state",
+    "priority"
+  ],
+  "difficulty": "medium",
+  "provenance": {
+    "source_type": "synthetic_original",
+    "source_url": null,
+    "synthesis_process": "Authored from a named industrial control scenario; fixed interface, priority, scan convention, boundary tests and LTL obligations were designed together.",
+    "adaptations": "Deterministic I/O abstraction; no physical I/O addressing or online control.",
+    "rationale": "Directional drive interlock is a common PLC control pattern; explicit limits make the task testable.",
+    "review_process": "Automated schema, reference-fixture scan tests and finite-trace LTL consistency checks. Human PLC scenario/spec review is still required.",
+    "review_status": "pending_human_review"
+  }
+}

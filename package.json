@@ -1,0 +1,27 @@
+{
+  "name": "plcforge",
+  "version": "0.1.4",
+  "description": "A terminal PLC Structured Text agent with configurable LLMs and real CODESYS compilation",
+  "license": "MIT",
+  "author": "LwithY",
+  "repository": {"type": "git", "url": "git+https://github.com/LwithY/plcforge.git"},
+  "homepage": "https://github.com/LwithY/plcforge#readme",
+  "bugs": {"url": "https://github.com/LwithY/plcforge/issues"},
+  "bin": {"plcforge": "bin/plcforge.cjs"},
+  "engines": {"node": ">=20"},
+  "os": ["win32"],
+  "cpu": ["x64", "arm64"],
+  "files": [
+    "bin/*.cjs", "npm/*.cjs", "npm/runtime-manifest.json", "npm/defaults/*.json",
+    "plcforge/**/*.py", "plcforge/knowledge/*.md", "data/tasks/*.json", "experiments/matrix.json",
+    "docs/LLM_SETTINGS.md", "docs/TERMINAL_AND_TRANSCRIPTS.md", "docs/NPM_INSTALL.md",
+    "LICENSE", "THIRD_PARTY_NOTICES.md", "settings.example.json"
+  ],
+  "scripts": {
+    "postinstall": "node npm/install.cjs",
+    "test": "node --test tests/npm/*.test.cjs",
+    "prepublishOnly": "node npm/check-package.cjs"
+  },
+  "keywords": ["plc", "codesys", "structured-text", "agent", "cli", "iec61131"],
+  "publishConfig": {"access": "public", "registry": "https://registry.npmjs.org/"}
+}

@@ -1,0 +1,12 @@
+{
+  "version": "3.14.10",
+  "source": "https://www.python.org/ftp/python/3.14.10/windows-3.14.10.json",
+  "win32-x64": {
+    "url": "https://www.python.org/ftp/python/3.14.10/python-3.14.10-embeddable-amd64.zip",
+    "sha256": "b553e7dac884469b40e0740bb527271c3378f700b427e0485835f1bb6424361c"
+  },
+  "win32-arm64": {
+    "url": "https://www.python.org/ftp/python/3.14.10/python-3.14.10-embeddable-arm64.zip",
+    "sha256": "5faf08027ec9d0ae7c346465464aa66bbc2f3b54a37d696c54024825ea29d02d"
+  }
+}

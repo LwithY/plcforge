@@ -1,0 +1,136 @@
+{
+  "id": "S09",
+  "title": "Three scan debounce",
+  "prompt": "Stable starts false. If Raw equals Stable clear Count; otherwise increase Count. On the third consecutive differing scan, change Stable to Raw and reset Count to 0. Reset forces Stable false and Count 0 with priority. Debounce both transitions.",
+  "interface": {
+    "pou": "PLC_PRG",
+    "kind": "PROGRAM",
+    "inputs": {
+      "Raw": "BOOL",
+      "Reset": "BOOL"
+    },
+    "outputs": {
+      "Stable": "BOOL",
+      "Count": "INT"
+    }
+  },
+  "entry_file": "src/PLC_PRG.st",
+  "scan_ms": 20,
+  "scan_semantics": "Inputs sampled before scan; outputs checked after same scan. Variables persist between scans. Each test starts at declarations initial values. Unspecified inputs retain their last value. Timer first enabling scan ET=0.",
+  "specs": [
+    {
+      "id": "P1",
+      "formula": "G (Reset -> (!Stable & (Count = 0)))"
+    },
+    {
+      "id": "P2",
+      "formula": "G ((Count >= 0) & (Count <= 2))"
+    },
+    {
+      "id": "P3",
+      "formula": "G ((!Reset & Raw & X (!Reset & Raw & X (!Reset & Raw))) -> X X Stable)"
+    }
+  ],
+  "tests": [
+    {
+      "name": "bounce_both_edges",
+      "scans": [
+        {
+          "inputs": {
+            "Raw": true,
+            "Reset": false
+          },
+          "expect": {
+            "Stable": false,
+            "Count": 1
+          }
+        },
+        {
+          "inputs": {
+            "Raw": false
+          },
+          "expect": {
+            "Stable": false,
+            "Count": 0
+          }
+        },
+        {
+          "inputs": {
+            "Raw": true
+          },
+          "expect": {
+            "Stable": false,
+            "Count": 1
+          }
+        },
+        {
+          "inputs": {},
+          "expect": {
+            "Stable": false,
+            "Count": 2
+          }
+        },
+        {
+          "inputs": {},
+          "expect": {
+            "Stable": true,
+            "Count": 0
+          }
+        },
+        {
+          "inputs": {
+            "Raw": false
+          },
+          "expect": {
+            "Stable": true,
+            "Count": 1
+          }
+        },
+        {
+          "inputs": {},
+          "expect": {
+            "Stable": true,
+            "Count": 2
+          }
+        },
+        {
+          "inputs": {},
+          "expect": {
+            "Stable": false,
+            "Count": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "reset_priority",
+      "scans": [
+        {
+          "inputs": {
+            "Raw": true,
+            "Reset": true
+          },
+          "expect": {
+            "Stable": false,
+            "Count": 0
+          }
+        }
+      ]
+    }
+  ],
+  "tags": [
+    "debounce",
+    "state",
+    "noise"
+  ],
+  "difficulty": "hard",
+  "provenance": {
+    "source_type": "synthetic_original",
+    "source_url": null,
+    "synthesis_process": "Authored from a named industrial control scenario; fixed interface, priority, scan convention, boundary tests and LTL obligations were designed together.",
+    "adaptations": "Deterministic I/O abstraction; no physical I/O addressing or online control.",
+    "rationale": "Three scan debounce is a common PLC control pattern; explicit limits make the task testable.",
+    "review_process": "Automated schema, reference-fixture scan tests and finite-trace LTL consistency checks. Human PLC scenario/spec review is still required.",
+    "review_status": "pending_human_review"
+  }
+}

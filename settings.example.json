@@ -1,0 +1,6 @@
+{
+  "base_url": "https://api-inference.modelscope.cn/v1",
+  "model": "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+  "api_key": "",
+  "api_key_env": "MODELSCOPE_API_KEY"
+}

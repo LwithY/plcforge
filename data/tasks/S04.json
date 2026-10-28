@@ -1,0 +1,159 @@
+{
+  "id": "S04",
+  "title": "Saturating batch counter",
+  "prompt": "Count starts at 0 and increases on Sensor rising edges, saturating at 3. Done = Count>=3. Reset clears Count with priority; the Sensor edge memory still updates during Reset, so a held Sensor after Reset does not count until a new rising edge.",
+  "interface": {
+    "pou": "PLC_PRG",
+    "kind": "PROGRAM",
+    "inputs": {
+      "Sensor": "BOOL",
+      "Reset": "BOOL"
+    },
+    "outputs": {
+      "Count": "INT",
+      "Done": "BOOL"
+    }
+  },
+  "entry_file": "src/PLC_PRG.st",
+  "scan_ms": 20,
+  "scan_semantics": "Inputs sampled before scan; outputs checked after same scan. Variables persist between scans. Each test starts at declarations initial values. Unspecified inputs retain their last value. Timer first enabling scan ET=0.",
+  "specs": [
+    {
+      "id": "P1",
+      "formula": "G ((Count >= 0) & (Count <= 3))"
+    },
+    {
+      "id": "P2",
+      "formula": "G (Reset -> (Count = 0))"
+    },
+    {
+      "id": "P3",
+      "formula": "G (Done -> (Count = 3))"
+    }
+  ],
+  "tests": [
+    {
+      "name": "rising_edges_saturation",
+      "scans": [
+        {
+          "inputs": {
+            "Sensor": true,
+            "Reset": false
+          },
+          "expect": {
+            "Count": 1,
+            "Done": false
+          }
+        },
+        {
+          "inputs": {},
+          "expect": {
+            "Count": 1
+          }
+        },
+        {
+          "inputs": {
+            "Sensor": false
+          },
+          "expect": {
+            "Count": 1
+          }
+        },
+        {
+          "inputs": {
+            "Sensor": true
+          },
+          "expect": {
+            "Count": 2
+          }
+        },
+        {
+          "inputs": {
+            "Sensor": false
+          },
+          "expect": {
+            "Count": 2
+          }
+        },
+        {
+          "inputs": {
+            "Sensor": true
+          },
+          "expect": {
+            "Count": 3,
+            "Done": true
+          }
+        },
+        {
+          "inputs": {
+            "Sensor": false
+          },
+          "expect": {
+            "Count": 3
+          }
+        },
+        {
+          "inputs": {
+            "Sensor": true
+          },
+          "expect": {
+            "Count": 3
+          }
+        }
+      ]
+    },
+    {
+      "name": "reset_edge_memory",
+      "scans": [
+        {
+          "inputs": {
+            "Sensor": true,
+            "Reset": true
+          },
+          "expect": {
+            "Count": 0
+          }
+        },
+        {
+          "inputs": {
+            "Reset": false
+          },
+          "expect": {
+            "Count": 0
+          }
+        },
+        {
+          "inputs": {
+            "Sensor": false
+          },
+          "expect": {
+            "Count": 0
+          }
+        },
+        {
+          "inputs": {
+            "Sensor": true
+          },
+          "expect": {
+            "Count": 1
+          }
+        }
+      ]
+    }
+  ],
+  "tags": [
+    "counter",
+    "edge",
+    "saturation"
+  ],
+  "difficulty": "medium",
+  "provenance": {
+    "source_type": "synthetic_original",
+    "source_url": null,
+    "synthesis_process": "Authored from a named industrial control scenario; fixed interface, priority, scan convention, boundary tests and LTL obligations were designed together.",
+    "adaptations": "Deterministic I/O abstraction; no physical I/O addressing or online control.",
+    "rationale": "Saturating batch counter is a common PLC control pattern; explicit limits make the task testable.",
+    "review_process": "Automated schema, reference-fixture scan tests and finite-trace LTL consistency checks. Human PLC scenario/spec review is still required.",
+    "review_status": "pending_human_review"
+  }
+}

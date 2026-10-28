@@ -1,0 +1,135 @@
+{
+  "id": "S03",
+  "title": "Tank filling hysteresis",
+  "prompt": "Level is a REAL percentage. Fault is TRUE outside [0,100]. Disable or Fault forces Pump FALSE. With Enable and valid Level, Level<=20 starts Pump, Level>=80 stops, and between thresholds retains Pump. Initially Pump false.",
+  "interface": {
+    "pou": "PLC_PRG",
+    "kind": "PROGRAM",
+    "inputs": {
+      "Enable": "BOOL",
+      "Level": "REAL"
+    },
+    "outputs": {
+      "Pump": "BOOL",
+      "Fault": "BOOL"
+    }
+  },
+  "entry_file": "src/PLC_PRG.st",
+  "scan_ms": 20,
+  "scan_semantics": "Inputs sampled before scan; outputs checked after same scan. Variables persist between scans. Each test starts at declarations initial values. Unspecified inputs retain their last value. Timer first enabling scan ET=0.",
+  "specs": [
+    {
+      "id": "P1",
+      "formula": "G ((!Enable | Fault) -> !Pump)"
+    },
+    {
+      "id": "P2",
+      "formula": "G ((Enable & !Fault & (Level <= 20)) -> Pump)"
+    },
+    {
+      "id": "P3",
+      "formula": "G ((Level >= 80) -> !Pump)"
+    },
+    {
+      "id": "P4",
+      "formula": "G (((Level < 0) | (Level > 100)) -> Fault)"
+    }
+  ],
+  "tests": [
+    {
+      "name": "thresholds",
+      "scans": [
+        {
+          "inputs": {
+            "Enable": true,
+            "Level": 50.0
+          },
+          "expect": {
+            "Pump": false,
+            "Fault": false
+          }
+        },
+        {
+          "inputs": {
+            "Level": 20.0
+          },
+          "expect": {
+            "Pump": true
+          }
+        },
+        {
+          "inputs": {
+            "Level": 50.0
+          },
+          "expect": {
+            "Pump": true
+          }
+        },
+        {
+          "inputs": {
+            "Level": 80.0
+          },
+          "expect": {
+            "Pump": false
+          }
+        },
+        {
+          "inputs": {
+            "Level": -1.0
+          },
+          "expect": {
+            "Pump": false,
+            "Fault": true
+          }
+        },
+        {
+          "inputs": {
+            "Level": 10.0
+          },
+          "expect": {
+            "Pump": true,
+            "Fault": false
+          }
+        },
+        {
+          "inputs": {
+            "Enable": false
+          },
+          "expect": {
+            "Pump": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "upper_fault",
+      "scans": [
+        {
+          "inputs": {
+            "Enable": true,
+            "Level": 101.0
+          },
+          "expect": {
+            "Pump": false,
+            "Fault": true
+          }
+        }
+      ]
+    }
+  ],
+  "tags": [
+    "hysteresis",
+    "analog",
+    "range"
+  ],
+  "difficulty": "medium",
+  "provenance": {
+    "source_type": "synthetic_original",
+    "source_url": null,
+    "synthesis_process": "Authored from a named industrial control scenario; fixed interface, priority, scan convention, boundary tests and LTL obligations were designed together.",
+    "adaptations": "Deterministic I/O abstraction; no physical I/O addressing or online control.",
+    "rationale": "Tank filling hysteresis is a common PLC control pattern; explicit limits make the task testable.",
+    "review_process": "Automated schema, reference-fixture scan tests and finite-trace LTL consistency checks. Human PLC scenario/spec review is still required.",
+    "review_status": "pending_human_review"
+  }
+}

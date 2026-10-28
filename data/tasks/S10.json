@@ -1,0 +1,135 @@
+{
+  "id": "S10",
+  "title": "Guarded fill drain sequence",
+  "prompt": "State INT initially 0 idle. Abort has priority, clears State to 0 and Done false. Otherwise State0: Done false and Start moves to1; State1: Full moves to2; State2: Empty moves to3; State3: Done true and Reset moves to0 and clears Done. Invalid state returns0. At most one state transition per scan. After transition compute Fill=(State=1), Drain=(State=2), Done=(State=3).",
+  "interface": {
+    "pou": "PLC_PRG",
+    "kind": "PROGRAM",
+    "inputs": {
+      "Start": "BOOL",
+      "Full": "BOOL",
+      "Empty": "BOOL",
+      "Abort": "BOOL",
+      "Reset": "BOOL"
+    },
+    "outputs": {
+      "State": "INT",
+      "Fill": "BOOL",
+      "Drain": "BOOL",
+      "Done": "BOOL"
+    }
+  },
+  "entry_file": "src/PLC_PRG.st",
+  "scan_ms": 20,
+  "scan_semantics": "Inputs sampled before scan; outputs checked after same scan. Variables persist between scans. Each test starts at declarations initial values. Unspecified inputs retain their last value. Timer first enabling scan ET=0.",
+  "specs": [
+    {
+      "id": "P1",
+      "formula": "G (!(Fill & Drain))"
+    },
+    {
+      "id": "P2",
+      "formula": "G (Abort -> ((State = 0) & !Fill & !Drain & !Done))"
+    },
+    {
+      "id": "P3",
+      "formula": "G (Done -> (State = 3))"
+    },
+    {
+      "id": "P4",
+      "formula": "G ((State >= 0) & (State <= 3))"
+    }
+  ],
+  "tests": [
+    {
+      "name": "normal_sequence",
+      "scans": [
+        {
+          "inputs": {
+            "Start": true,
+            "Full": false,
+            "Empty": false,
+            "Abort": false,
+            "Reset": false
+          },
+          "expect": {
+            "State": 1,
+            "Fill": true,
+            "Drain": false
+          }
+        },
+        {
+          "inputs": {
+            "Start": false,
+            "Full": true
+          },
+          "expect": {
+            "State": 2,
+            "Fill": false,
+            "Drain": true
+          }
+        },
+        {
+          "inputs": {
+            "Empty": true
+          },
+          "expect": {
+            "State": 3,
+            "Drain": false,
+            "Done": true
+          }
+        },
+        {
+          "inputs": {
+            "Reset": true
+          },
+          "expect": {
+            "State": 0,
+            "Done": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "one_transition_and_abort",
+      "scans": [
+        {
+          "inputs": {
+            "Start": true,
+            "Full": true,
+            "Empty": true
+          },
+          "expect": {
+            "State": 1
+          }
+        },
+        {
+          "inputs": {
+            "Abort": true
+          },
+          "expect": {
+            "State": 0,
+            "Fill": false,
+            "Drain": false,
+            "Done": false
+          }
+        }
+      ]
+    }
+  ],
+  "tags": [
+    "sequence",
+    "CASE",
+    "priority"
+  ],
+  "difficulty": "hard",
+  "provenance": {
+    "source_type": "synthetic_original",
+    "source_url": null,
+    "synthesis_process": "Authored from a named industrial control scenario; fixed interface, priority, scan convention, boundary tests and LTL obligations were designed together.",
+    "adaptations": "Deterministic I/O abstraction; no physical I/O addressing or online control.",
+    "rationale": "Guarded fill drain sequence is a common PLC control pattern; explicit limits make the task testable.",
+    "review_process": "Automated schema, reference-fixture scan tests and finite-trace LTL consistency checks. Human PLC scenario/spec review is still required.",
+    "review_status": "pending_human_review"
+  }
+}

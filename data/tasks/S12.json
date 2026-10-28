@@ -1,0 +1,205 @@
+{
+  "id": "S12",
+  "title": "Redundant sensor voting",
+  "prompt": "Vote is true when at least2 of A,B,C are true and Enable true. Disagree is true when inputs are not all equal, regardless of Enable. SafeOut=Vote AND NOT EStop. EStop always forces SafeOut false.",
+  "interface": {
+    "pou": "PLC_PRG",
+    "kind": "PROGRAM",
+    "inputs": {
+      "A": "BOOL",
+      "B": "BOOL",
+      "C": "BOOL",
+      "Enable": "BOOL",
+      "EStop": "BOOL"
+    },
+    "outputs": {
+      "Vote": "BOOL",
+      "Disagree": "BOOL",
+      "SafeOut": "BOOL"
+    }
+  },
+  "entry_file": "src/PLC_PRG.st",
+  "scan_ms": 20,
+  "scan_semantics": "Inputs sampled before scan; outputs checked after same scan. Variables persist between scans. Each test starts at declarations initial values. Unspecified inputs retain their last value. Timer first enabling scan ET=0.",
+  "specs": [
+    {
+      "id": "P1",
+      "formula": "G (EStop -> !SafeOut)"
+    },
+    {
+      "id": "P2",
+      "formula": "G (!Enable -> !Vote)"
+    },
+    {
+      "id": "P3",
+      "formula": "G (Vote -> ((A & B) | (A & C) | (B & C)))"
+    },
+    {
+      "id": "P4",
+      "formula": "G (((A = B) & (B = C)) -> !Disagree)"
+    }
+  ],
+  "tests": [
+    {
+      "name": "truth_table",
+      "scans": [
+        {
+          "inputs": {
+            "A": false,
+            "B": false,
+            "C": false,
+            "Enable": true,
+            "EStop": false
+          },
+          "expect": {
+            "Vote": false,
+            "Disagree": false,
+            "SafeOut": false
+          }
+        },
+        {
+          "inputs": {
+            "A": false,
+            "B": false,
+            "C": true,
+            "Enable": true,
+            "EStop": false
+          },
+          "expect": {
+            "Vote": false,
+            "Disagree": true,
+            "SafeOut": false
+          }
+        },
+        {
+          "inputs": {
+            "A": false,
+            "B": true,
+            "C": false,
+            "Enable": true,
+            "EStop": false
+          },
+          "expect": {
+            "Vote": false,
+            "Disagree": true,
+            "SafeOut": false
+          }
+        },
+        {
+          "inputs": {
+            "A": false,
+            "B": true,
+            "C": true,
+            "Enable": true,
+            "EStop": false
+          },
+          "expect": {
+            "Vote": true,
+            "Disagree": true,
+            "SafeOut": true
+          }
+        },
+        {
+          "inputs": {
+            "A": true,
+            "B": false,
+            "C": false,
+            "Enable": true,
+            "EStop": false
+          },
+          "expect": {
+            "Vote": false,
+            "Disagree": true,
+            "SafeOut": false
+          }
+        },
+        {
+          "inputs": {
+            "A": true,
+            "B": false,
+            "C": true,
+            "Enable": true,
+            "EStop": false
+          },
+          "expect": {
+            "Vote": true,
+            "Disagree": true,
+            "SafeOut": true
+          }
+        },
+        {
+          "inputs": {
+            "A": true,
+            "B": true,
+            "C": false,
+            "Enable": true,
+            "EStop": false
+          },
+          "expect": {
+            "Vote": true,
+            "Disagree": true,
+            "SafeOut": true
+          }
+        },
+        {
+          "inputs": {
+            "A": true,
+            "B": true,
+            "C": true,
+            "Enable": true,
+            "EStop": false
+          },
+          "expect": {
+            "Vote": true,
+            "Disagree": false,
+            "SafeOut": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "gates",
+      "scans": [
+        {
+          "inputs": {
+            "A": true,
+            "B": true,
+            "C": true,
+            "Enable": false,
+            "EStop": false
+          },
+          "expect": {
+            "Vote": false,
+            "SafeOut": false,
+            "Disagree": false
+          }
+        },
+        {
+          "inputs": {
+            "Enable": true,
+            "EStop": true
+          },
+          "expect": {
+            "Vote": true,
+            "SafeOut": false
+          }
+        }
+      ]
+    }
+  ],
+  "tags": [
+    "redundancy",
+    "voting",
+    "truth_table"
+  ],
+  "difficulty": "medium",
+  "provenance": {
+    "source_type": "synthetic_original",
+    "source_url": null,
+    "synthesis_process": "Authored from a named industrial control scenario; fixed interface, priority, scan convention, boundary tests and LTL obligations were designed together.",
+    "adaptations": "Deterministic I/O abstraction; no physical I/O addressing or online control.",
+    "rationale": "Redundant sensor voting is a common PLC control pattern; explicit limits make the task testable.",
+    "review_process": "Automated schema, reference-fixture scan tests and finite-trace LTL consistency checks. Human PLC scenario/spec review is still required.",
+    "review_status": "pending_human_review"
+  }
+}

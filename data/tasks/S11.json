@@ -1,0 +1,122 @@
+{
+  "id": "S11",
+  "title": "Bounded ramp command",
+  "prompt": "Command INT initially0, target range0..100. Each enabled scan move toward clamped Target by at most5, without overshoot. Disable forces Command0. Compute AtTarget after update as Command=clamped Target, even while disabled.",
+  "interface": {
+    "pou": "PLC_PRG",
+    "kind": "PROGRAM",
+    "inputs": {
+      "Enable": "BOOL",
+      "Target": "INT"
+    },
+    "outputs": {
+      "Command": "INT",
+      "AtTarget": "BOOL"
+    }
+  },
+  "entry_file": "src/PLC_PRG.st",
+  "scan_ms": 20,
+  "scan_semantics": "Inputs sampled before scan; outputs checked after same scan. Variables persist between scans. Each test starts at declarations initial values. Unspecified inputs retain their last value. Timer first enabling scan ET=0.",
+  "specs": [
+    {
+      "id": "P1",
+      "formula": "G ((Command >= 0) & (Command <= 100))"
+    },
+    {
+      "id": "P2",
+      "formula": "G (!Enable -> (Command = 0))"
+    },
+    {
+      "id": "P3",
+      "formula": "G ((AtTarget & (Target >= 0) & (Target <= 100)) -> (Command = Target))"
+    }
+  ],
+  "tests": [
+    {
+      "name": "ramp_no_overshoot",
+      "scans": [
+        {
+          "inputs": {
+            "Enable": true,
+            "Target": 12
+          },
+          "expect": {
+            "Command": 5,
+            "AtTarget": false
+          }
+        },
+        {
+          "inputs": {},
+          "expect": {
+            "Command": 10
+          }
+        },
+        {
+          "inputs": {},
+          "expect": {
+            "Command": 12,
+            "AtTarget": true
+          }
+        },
+        {
+          "inputs": {
+            "Target": 3
+          },
+          "expect": {
+            "Command": 7,
+            "AtTarget": false
+          }
+        },
+        {
+          "inputs": {},
+          "expect": {
+            "Command": 3,
+            "AtTarget": true
+          }
+        },
+        {
+          "inputs": {
+            "Target": -5
+          },
+          "expect": {
+            "Command": 0,
+            "AtTarget": true
+          }
+        },
+        {
+          "inputs": {
+            "Target": 200
+          },
+          "expect": {
+            "Command": 5,
+            "AtTarget": false
+          }
+        },
+        {
+          "inputs": {
+            "Enable": false
+          },
+          "expect": {
+            "Command": 0,
+            "AtTarget": false
+          }
+        }
+      ]
+    }
+  ],
+  "tags": [
+    "ramp",
+    "numeric",
+    "saturation"
+  ],
+  "difficulty": "medium",
+  "provenance": {
+    "source_type": "synthetic_original",
+    "source_url": null,
+    "synthesis_process": "Authored from a named industrial control scenario; fixed interface, priority, scan convention, boundary tests and LTL obligations were designed together.",
+    "adaptations": "Deterministic I/O abstraction; no physical I/O addressing or online control.",
+    "rationale": "Bounded ramp command is a common PLC control pattern; explicit limits make the task testable.",
+    "review_process": "Automated schema, reference-fixture scan tests and finite-trace LTL consistency checks. Human PLC scenario/spec review is still required.",
+    "review_status": "pending_human_review"
+  }
+}

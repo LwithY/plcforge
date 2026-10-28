@@ -1,0 +1,132 @@
+{
+  "id": "S01",
+  "title": "Motor start stop latch",
+  "prompt": "Implement a motor latch. Initially Motor=FALSE. StopBtn or EStop stops in the same scan, with priority over StartBtn. Otherwise StartBtn starts; releasing StartBtn retains Motor.",
+  "interface": {
+    "pou": "PLC_PRG",
+    "kind": "PROGRAM",
+    "inputs": {
+      "StartBtn": "BOOL",
+      "StopBtn": "BOOL",
+      "EStop": "BOOL"
+    },
+    "outputs": {
+      "Motor": "BOOL"
+    }
+  },
+  "entry_file": "src/PLC_PRG.st",
+  "scan_ms": 20,
+  "scan_semantics": "Inputs sampled before scan; outputs checked after same scan. Variables persist between scans. Each test starts at declarations initial values. Unspecified inputs retain their last value. Timer first enabling scan ET=0.",
+  "specs": [
+    {
+      "id": "P1",
+      "formula": "G ((StopBtn | EStop) -> !Motor)"
+    },
+    {
+      "id": "P2",
+      "formula": "G ((StartBtn & !StopBtn & !EStop) -> Motor)"
+    },
+    {
+      "id": "P3",
+      "formula": "G (Motor -> X ((StopBtn | EStop) | Motor))"
+    }
+  ],
+  "tests": [
+    {
+      "name": "latch_stop_priority",
+      "scans": [
+        {
+          "inputs": {
+            "StartBtn": false,
+            "StopBtn": false,
+            "EStop": false
+          },
+          "expect": {
+            "Motor": false
+          }
+        },
+        {
+          "inputs": {
+            "StartBtn": true
+          },
+          "expect": {
+            "Motor": true
+          }
+        },
+        {
+          "inputs": {
+            "StartBtn": false
+          },
+          "expect": {
+            "Motor": true
+          }
+        },
+        {
+          "inputs": {
+            "StartBtn": true,
+            "StopBtn": true
+          },
+          "expect": {
+            "Motor": false
+          }
+        },
+        {
+          "inputs": {
+            "StartBtn": false,
+            "StopBtn": false
+          },
+          "expect": {
+            "Motor": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "emergency_priority",
+      "scans": [
+        {
+          "inputs": {
+            "StartBtn": true,
+            "EStop": true
+          },
+          "expect": {
+            "Motor": false
+          }
+        },
+        {
+          "inputs": {
+            "StartBtn": false,
+            "EStop": false
+          },
+          "expect": {
+            "Motor": false
+          }
+        },
+        {
+          "inputs": {
+            "StartBtn": true
+          },
+          "expect": {
+            "Motor": true
+          }
+        }
+      ]
+    }
+  ],
+  "tags": [
+    "latch",
+    "priority",
+    "safety"
+  ],
+  "difficulty": "easy",
+  "provenance": {
+    "source_type": "adapted_course_example",
+    "source_url": null,
+    "synthesis_process": "Authored from a named industrial control scenario; fixed interface, priority, scan convention, boundary tests and LTL obligations were designed together.",
+    "adaptations": "Resolve inconsistent timing row by explicitly selecting same-scan after-execution observation. Add latch, simultaneous stop/start and emergency reset tests.",
+    "rationale": "Motor start stop latch is a common PLC control pattern; explicit limits make the task testable.",
+    "review_process": "Automated schema, reference-fixture scan tests and finite-trace LTL consistency checks. Human PLC scenario/spec review is still required.",
+    "review_status": "pending_human_review",
+    "source_document": "Final project_ENGLISH.docx, section V motor example"
+  }
+}

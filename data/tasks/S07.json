@@ -1,0 +1,138 @@
+{
+  "id": "S07",
+  "title": "Conveyor jam alarm latch",
+  "prompt": "With Run true and Motion false, increment BadScans each scan up to 3; otherwise clear it. At 3 latch Alarm. Reset clears BadScans and Alarm with priority. Alarm remains true after Motion recovers until Reset. Initially 0/false.",
+  "interface": {
+    "pou": "PLC_PRG",
+    "kind": "PROGRAM",
+    "inputs": {
+      "Run": "BOOL",
+      "Motion": "BOOL",
+      "Reset": "BOOL"
+    },
+    "outputs": {
+      "Alarm": "BOOL",
+      "BadScans": "INT"
+    }
+  },
+  "entry_file": "src/PLC_PRG.st",
+  "scan_ms": 20,
+  "scan_semantics": "Inputs sampled before scan; outputs checked after same scan. Variables persist between scans. Each test starts at declarations initial values. Unspecified inputs retain their last value. Timer first enabling scan ET=0.",
+  "specs": [
+    {
+      "id": "P1",
+      "formula": "G (Reset -> (!Alarm & (BadScans = 0)))"
+    },
+    {
+      "id": "P2",
+      "formula": "G ((BadScans >= 3) -> Alarm)"
+    },
+    {
+      "id": "P3",
+      "formula": "G (Alarm -> X (Reset | Alarm))"
+    }
+  ],
+  "tests": [
+    {
+      "name": "jam_latch",
+      "scans": [
+        {
+          "inputs": {
+            "Run": true,
+            "Motion": false,
+            "Reset": false
+          },
+          "expect": {
+            "Alarm": false,
+            "BadScans": 1
+          }
+        },
+        {
+          "inputs": {},
+          "expect": {
+            "Alarm": false,
+            "BadScans": 2
+          }
+        },
+        {
+          "inputs": {},
+          "expect": {
+            "Alarm": true,
+            "BadScans": 3
+          }
+        },
+        {
+          "inputs": {
+            "Motion": true
+          },
+          "expect": {
+            "Alarm": true,
+            "BadScans": 0
+          }
+        },
+        {
+          "inputs": {
+            "Reset": true
+          },
+          "expect": {
+            "Alarm": false,
+            "BadScans": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "interrupted_jam",
+      "scans": [
+        {
+          "inputs": {
+            "Run": true,
+            "Motion": false
+          },
+          "expect": {
+            "BadScans": 1
+          }
+        },
+        {
+          "inputs": {
+            "Motion": true
+          },
+          "expect": {
+            "BadScans": 0
+          }
+        },
+        {
+          "inputs": {
+            "Motion": false
+          },
+          "expect": {
+            "BadScans": 1
+          }
+        },
+        {
+          "inputs": {
+            "Run": false
+          },
+          "expect": {
+            "BadScans": 0
+          }
+        }
+      ]
+    }
+  ],
+  "tags": [
+    "fault",
+    "latch",
+    "consecutive_scans"
+  ],
+  "difficulty": "medium",
+  "provenance": {
+    "source_type": "synthetic_original",
+    "source_url": null,
+    "synthesis_process": "Authored from a named industrial control scenario; fixed interface, priority, scan convention, boundary tests and LTL obligations were designed together.",
+    "adaptations": "Deterministic I/O abstraction; no physical I/O addressing or online control.",
+    "rationale": "Conveyor jam alarm latch is a common PLC control pattern; explicit limits make the task testable.",
+    "review_process": "Automated schema, reference-fixture scan tests and finite-trace LTL consistency checks. Human PLC scenario/spec review is still required.",
+    "review_status": "pending_human_review"
+  }
+}
