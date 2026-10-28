@@ -7,7 +7,7 @@
 Windows 10/11，已安装 Node.js 20+：
 
 ```powershell
-npm install -g plcforge
+npm install -g plcforge@latest
 ```
 
 然后在任意工程文件夹打开终端：
@@ -17,6 +17,8 @@ plcforge
 ```
 
 当前文件夹就是工程工作区。安装器优先复用 Python 3.11+；没有合适版本时自动下载官方 Windows 便携运行时并校验 SHA-256。无需 pip 安装依赖。首次安装需要联网，后续使用保留本地运行时和配置。
+
+升级也使用 `npm install -g plcforge@latest`，无需先卸载。同一个 npm 全局安装目录中的旧版会被替换，保留模型设置、密钥、CODESYS 配置及工程文件。升级后退出已有聊天并重新启动，用 `plcforge --version` 确认版本。`latest` 在执行安装命令时解析；后续更新需再次执行该命令。
 
 Windows x64 已实测；自动运行时清单同时提供 Windows ARM64。CODESYS 本身需要用户另行安装。
 

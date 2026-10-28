@@ -3,7 +3,7 @@
 Windows 10/11 with Node.js 20+:
 
 ```powershell
-npm install -g plcforge
+npm install -g plcforge@latest
 plcforge
 ```
 
@@ -40,3 +40,18 @@ The package uses OpenAI-compatible Chat Completions/SSE and tool calling. Each n
 If npm scripts were disabled, the first invocation also performs lazy setup. `PLCFORGE_PYTHON` can select a Python executable. `PLCFORGE_SKIP_CODESYS_SETUP=1` skips native compiler preparation during installation; run `plcforge setup` later. No PATH edits beyond npm's normal global command installation are performed. npm's global bin directory must already be available in the terminal PATH.
 
 Uninstalling the npm package keeps personal settings and project files. A newer release can be installed with `npm install -g plcforge@latest`.
+
+## Upgrade from 0.1.4 to 0.1.5
+
+Use the same Node.js/npm environment and global prefix as the previous installation:
+
+```powershell
+npm install -g plcforge@latest
+plcforge --version
+```
+
+Once 0.1.5 is published as `latest`, this command replaces the existing 0.1.4 package and keeps one active global `plcforge` command in that prefix. No uninstall step is needed. To request this exact release, use `npm install -g plcforge@0.1.5`. npm installs from its registry; uploading source to GitHub alone does not publish an npm version.
+
+Model settings and credentials, runtime limits, CODESYS configuration/templates, cached Python, project sources and saved project sessions live outside npm's package directory and are retained. An already-running PLCForge chat must exit and restart to load the newly installed code.
+
+`@latest` is resolved each time the install command is run. Future releases require running it again; PLCForge does not silently update itself on startup. If `plcforge --version` still shows an older version, run `Get-Command plcforge -All` and `npm prefix -g` in PowerShell to check for another Node.js installation or an older command ahead in PATH. A second npm prefix is a separate installation.

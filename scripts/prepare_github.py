@@ -44,7 +44,7 @@ def main():
     files += list((ROOT/'evaluation').rglob('*.json'))
     files += [ROOT/'scripts'/name for name in ('launch.ps1','setup.ps1','install-global.ps1','prepare_github.py',
         'build_p01_acceptance.py','run_p01_acceptance.py','summarize_p01_acceptance.py',
-        'verify_agent_native.py','build_acceptance_report.py','codesys_batch_build.py')]
+        'verify_agent_native.py','build_acceptance_report.py','codesys_batch_build.py','verify_npm_upgrade.py')]
     entries=[]
     manifest=[]
     for file in sorted(set(files)):
