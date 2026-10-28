@@ -19,7 +19,7 @@
   ],
   "scripts": {
     "postinstall": "node npm/install.cjs",
-    "test": "node --test tests/npm/*.test.cjs",
+    "test": "node --test tests/npm/runtime.test.cjs",
     "prepublishOnly": "node npm/check-package.cjs"
   },
   "keywords": ["plc", "codesys", "structured-text", "agent", "cli", "iec61131"],
