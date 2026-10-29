@@ -1414,6 +1414,7 @@
   },
   "provenance": {
     "source": "question bank easy[0]",
+    "source_type": "course_public",
     "review_status": "pending_confirmation",
     "suite_origin": "new local reconstruction; collaborator original files unavailable",
     "suite_version": "P01-development-v1"

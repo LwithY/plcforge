@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-29",
+  "version": "0.1.6",
+  "python": {"command": "python -m unittest discover -s tests -p test_*.py", "passed": 154, "failed": 0},
+  "node": {"command": "npm test", "passed": 7, "failed": 0},
+  "package_check": "passed",
+  "npm_package": {
+    "file": "dist/plcforge-0.1.6.tgz",
+    "files": 57,
+    "size": 92394,
+    "unpacked_size": 363729,
+    "sha256": "9fada05367dc9750fb914016dd4b6ea4c66df398e919406bdf8c3b09e046d8b4",
+    "sha1": "982c5eca4716f5ee9bf551b7528a7205dbf49ea3",
+    "integrity": "sha512-S9jBm7WcgDXuj5cg56gK4V8NjUujVt5aoZL8FLSSKB4pG+U5mnyr7ozx4r/D1LX90QLVfFv3RmrnhJuVSYY99g=="
+  },
+  "upgrade": {
+    "status": "passed",
+    "before": "0.1.5",
+    "after": "0.1.6",
+    "preserved_files": 7,
+    "installed_files_matching_package": 57
+  },
+  "dataset": {"status": "passed", "task_count": 13, "public_tasks_received": true},
+  "real_model_calls": 0,
+  "physical_plc_runs": 0
+}

@@ -354,15 +354,19 @@ def main(argv=None):
             return 0 if result['status']=='passed' else 3
         if args.command == 'dataset':
             files = sorted(args.directory.glob('*.json'))
-            results = []
+            results, tasks = [], []
             for file in files:
                 task = json.loads(file.read_text(encoding='utf-8-sig'))
+                tasks.append(task)
                 results.append({'file':file.name, 'errors':validate_task(task),
                                 'review_status':task.get('provenance',{}).get('review_status','unknown')})
-            ids = [json.loads(f.read_text(encoding='utf-8-sig'))['id'] for f in files]
+            ids = [task['id'] for task in tasks]
             valid = bool(files) and len(ids)==len(set(ids)) and not any(r['errors'] for r in results)
             output({'status':'passed' if valid else 'failed', 'count':len(files), 'tasks':results,
-                    'public_tasks_received':False, 'human_review_complete':False})
+                    'public_tasks_received':any(task.get('provenance',{}).get('source_type')=='course_public'
+                                                for task in tasks),
+                    'human_review_complete':bool(tasks) and all(
+                        task.get('provenance',{}).get('review_status')=='human_reviewed' for task in tasks)})
             return 0 if valid else 2
         if args.command == 'bench':
             from .benchmark import dispatch

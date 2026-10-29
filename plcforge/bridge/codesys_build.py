@@ -11,6 +11,38 @@ import os
 import traceback
 
 
+def probe_source(pous):
+    """Build a task-reachable wrapper with typed actual parameters."""
+    declarations, calls = [], []
+    for index, pou in enumerate(pous):
+        arguments = []
+        for parameter_index, parameter in enumerate(pou.get('call_parameters', [])):
+            actual = 'PLCFORGE_arg_' + str(index) + '_' + str(parameter_index)
+            declarations.append('    ' + actual + ' : ' + parameter['type'] + ';')
+            arguments.append(parameter['name'] + ' := ' + actual)
+        argument_text = ', '.join(arguments)
+        if pou['kind'] == 'FUNCTION_BLOCK':
+            instance = 'PLCFORGE_instance_' + str(index)
+            declarations.append('    ' + instance + ' : ' + pou['name'] + ';')
+            calls.append(instance + '(' + argument_text + ');')
+        elif pou['kind'] == 'PROGRAM':
+            calls.append(pou['name'] + '(' + argument_text + ');')
+        elif pou['kind'] == 'FUNCTION':
+            instance = 'PLCFORGE_result_' + str(index)
+            declarations.append('    ' + instance + ' : ' + pou['return_type'] + ';')
+            calls.append(instance + ' := ' + pou['name'] + '(' + argument_text + ');')
+    declaration = 'PROGRAM PLCFORGE_CompileProbe\nVAR\n' + '\n'.join(declarations) + '\nEND_VAR'
+    return declaration, '\n'.join(calls)
+
+
+def diagnostic_origin(object_name):
+    if object_name and object_name.upper().startswith('PLCFORGE_'):
+        return 'bridge_wrapper'
+    if object_name:
+        return 'candidate'
+    return 'toolchain'
+
+
 def build_job(job):
     from scriptengine import projects, system, Severity, KindOfTask
     result = {'job_id': job['job_id'], 'source_hashes': job['source_hashes'],
@@ -38,22 +70,12 @@ def build_job(job):
             obj.textual_declaration.replace(new_text=pou['declaration'])
             obj.textual_implementation.replace(new_text=pou['implementation'])
             imported.append(pou['name'])
-        # Force every supplied POU into a task-reachable call graph.
-        declarations, calls = [], []
-        for index, pou in enumerate(job['pous']):
-            if pou['kind'] == 'FUNCTION_BLOCK':
-                instance = 'PLCFORGE_instance_' + str(index)
-                declarations.append('    ' + instance + ' : ' + pou['name'] + ';')
-                calls.append(instance + '();')
-            elif pou['kind'] == 'PROGRAM':
-                calls.append(pou['name'] + '();')
-            elif pou['kind'] == 'FUNCTION':
-                instance = 'PLCFORGE_result_' + str(index)
-                declarations.append('    ' + instance + ' : ' + pou['return_type'] + ';')
-                calls.append(instance + ' := ' + pou['name'] + '();')
+        # Force every supplied POU into a task-reachable call graph.  Actual
+        # variables are required for VAR_IN_OUT and function inputs.
+        probe_declaration, probe_implementation = probe_source(job['pous'])
         probes = app.create_program('PLCFORGE_CompileProbe')
-        probes.textual_declaration.replace(new_text='PROGRAM PLCFORGE_CompileProbe\nVAR\n' + '\n'.join(declarations) + '\nEND_VAR')
-        probes.textual_implementation.replace(new_text='\n'.join(calls))
+        probes.textual_declaration.replace(new_text=probe_declaration)
+        probes.textual_implementation.replace(new_text=probe_implementation)
         tasks = [obj for obj in app.get_children(True)
                  if getattr(obj, 'is_task', False) and obj.kind_of_task == KindOfTask.Cyclic]
         if not tasks:
@@ -76,17 +98,31 @@ def build_job(job):
         result['diagnostics'].append({'severity': 'infrastructure', 'message': traceback.format_exc()})
     finally:
         error_count = 0
+        error_origins = {'candidate': 0, 'bridge_wrapper': 0, 'toolchain': 0}
         for category in system.get_message_categories():
             for label,levels in (('error',Severity.Error | Severity.FatalError),('warning',Severity.Warning)):
                 for msg in system.get_message_objects(category=category,severities=levels):
                     error_count += 1 if label=='error' else 0
+                    object_name = msg.object.get_name() if msg.object is not None else None
+                    origin = diagnostic_origin(object_name)
+                    if label == 'error':
+                        error_origins[origin] += 1
                     result['diagnostics'].append({'severity':label,'message':msg.text,
                         'code':(str(msg.prefix)+str(msg.number)) if msg.number is not None else None,
                         'position':msg.position_text,
-                        'object':msg.object.get_name() if msg.object is not None else None})
+                        'object':object_name, 'origin':origin})
         result['error_count'] = error_count
+        result['candidate_error_count'] = error_origins['candidate']
+        result['wrapper_error_count'] = error_origins['bridge_wrapper']
+        result['toolchain_error_count'] = error_origins['toolchain']
         if error_count and result.get('build_started'):
-            result['status'] = 'failed'
+            if error_origins['bridge_wrapper'] or error_origins['toolchain']:
+                result['status'] = 'infrastructure_error'
+                result['failure_origin'] = ('bridge_wrapper' if error_origins['bridge_wrapper']
+                                            else 'toolchain')
+            else:
+                result['status'] = 'failed'
+                result['failure_origin'] = 'candidate'
         if project is not None:
             project.close()
         with io.open(job['result'], 'w', encoding='utf-8') as stream:

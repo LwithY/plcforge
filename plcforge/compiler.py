@@ -14,6 +14,38 @@ from .security import digest, redact, write_json
 from .st import STError, strip_comments
 
 
+def interface_parameters(declaration: str) -> list[dict]:
+    """Extract callable input/in-out parameters for the compile probe.
+
+    The bridge must pass a writable variable to every VAR_IN_OUT and every
+    function input.  Keeping the declared type here lets the bridge create a
+    matching local variable instead of guessing a literal value.
+    """
+    clean = strip_comments(declaration)
+    parameters = []
+    pattern = (r'\b(VAR_INPUT|VAR_IN_OUT)\b(?:\s+(?:CONSTANT|RETAIN|PERSISTENT))?'
+               r'(.*?)\bEND_VAR\b')
+    for block in re.finditer(pattern, clean, re.I | re.S):
+        scope = block.group(1).upper()
+        body = re.sub(r'\{.*?\}', '', block.group(2), flags=re.S)
+        for statement in body.split(';'):
+            statement = statement.strip()
+            if not statement:
+                continue
+            if ':' not in statement:
+                raise STError('Cannot parse %s parameter declaration: %s' % (scope, statement))
+            names, data_type = statement.split(':', 1)
+            data_type = data_type.split(':=', 1)[0].strip()
+            if not data_type:
+                raise STError('Missing data type in %s parameter declaration' % scope)
+            for raw_name in names.split(','):
+                name = re.split(r'\s+AT\s+', raw_name.strip(), flags=re.I)[0].strip()
+                if not re.fullmatch(r'[A-Za-z_]\w*', name):
+                    raise STError('Cannot parse %s parameter name: %s' % (scope, raw_name.strip()))
+                parameters.append({'name': name, 'type': data_type, 'scope': scope})
+    return parameters
+
+
 def source_sections(source: str) -> dict:
     clean = strip_comments(source)
     if len(re.findall(r'\b(?:PROGRAM|FUNCTION_BLOCK|FUNCTION)\s+\w+',clean,re.I)) != 1:
@@ -31,8 +63,10 @@ def source_sections(source: str) -> dict:
         last = match.end()+block.end()
     if re.search(r'\b(PROGRAM|FUNCTION_BLOCK|FUNCTION)\b', clean[last:end.start()], re.I):
         raise STError('Multiple POUs in one file are not supported by the bridge')
+    declaration = source[:last].strip()
     return {'name': name, 'kind': kind, 'return_type': match.group(3) or '',
-            'declaration': source[:last].strip(), 'implementation': source[last:end.start()].strip(),
+            'declaration': declaration, 'implementation': source[last:end.start()].strip(),
+            'call_parameters': interface_parameters(declaration),
             'sha256': digest(source)}
 
 

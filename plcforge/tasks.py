@@ -9,9 +9,17 @@ from .evidence import canonical_hash
 
 def validate_task(task: dict) -> list[str]:
     errors = []
+    task_id = task.get('id', '?')
     for field in ('id', 'prompt', 'interface', 'specs', 'tests', 'provenance'):
         if not task.get(field):
             errors.append('Missing ' + field)
+    provenance = task.get('provenance')
+    if not isinstance(provenance, dict):
+        errors.append('Task %s provenance must be an object' % task_id)
+    else:
+        for field in ('source_type', 'review_status'):
+            if not provenance.get(field):
+                errors.append('Task %s provenance missing required field: %s' % (task_id, field))
     if not isinstance(task.get('tests'), list):
         errors.append('tests must be a list')
     else:

@@ -1,0 +1,37 @@
+{
+  "status": "passed",
+  "at": "2026-10-29T02:53:43.524392+00:00",
+  "method": "registry baseline followed by a local package upgrade in the same isolated prefix",
+  "baseline_installed_from_registry": true,
+  "current_installed_from_registry": false,
+  "installed_files_match_tested_archive": 57,
+  "before_version": "0.1.5",
+  "after_version": "0.1.6",
+  "python_loaded_plcforge_version": "0.1.6",
+  "one_active_package": true,
+  "old_package_file_removed": true,
+  "preserved_files": [
+    "settings.json",
+    "plcforge.json",
+    "codesys/template.project",
+    "codesys/toolchain.json",
+    "runtime/preserved-runtime.txt",
+    "project/src/PLC_PRG.st",
+    "project/session"
+  ],
+  "preserved_hashes": {
+    "settings.json": "3b34d9e9e7fb0058457ca9c8b714438ef5aa8aea911bc8c62f21ab72f83fa4f3",
+    "plcforge.json": "e036f2c9d9089b9eba3ac789336c841c842617cb61a303f84829934fc986dc95",
+    "codesys/template.project": "a1091e44417416953ca42217a31f0a1b4c940620221b62d8f8dc05739b96716f",
+    "codesys/toolchain.json": "cdd322c1cf223dfaf8d9967570c409aa284fe6e7cacbbbd87afc18a83644b355",
+    "runtime/preserved-runtime.txt": "8e426854c18d84c327534a74f0d8e96a277d8d752805953b1f39a21dd86121e0",
+    "project/src/PLC_PRG.st": "e322d012167903e4c385f38b8d857cd6cd3179b774fa2c4f69603fbdfc6ace4c",
+    "project/session": "8517eb87f98e319232096d9be2ef85ba91415ead3a65143566be54f3bab1c10c"
+  },
+  "credentials": "synthetic test fixture; actual user credentials were not read",
+  "baseline_source": "plcforge@0.1.5",
+  "new_archive_sha256": "9fada05367dc9750fb914016dd4b6ea4c66df398e919406bdf8c3b09e046d8b4",
+  "automatic_update_scope": "install invocation only; no background self-update or version polling",
+  "processes": "already-running terminals must restart to load upgraded code",
+  "codesys_scope": "configuration/template preservation only; no compiler run in this upgrade test"
+}

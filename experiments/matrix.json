@@ -4,7 +4,7 @@
     "B": {"id": "", "base_url": "https://api-inference.modelscope.cn/v1", "api_key_env": "MODELSCOPE_API_KEY"}
   },
   "frameworks": [
-    {"name": "plcforge", "kind": "plcforge", "version": "0.1.4"},
+    {"name": "plcforge", "kind": "plcforge", "version": "0.1.6"},
     {"name": "claude-code-reference", "kind": "external", "version": "configure-installed-cli-version", "command": [], "notes": "Configure a real existing CLI that accepts the same model/endpoint. Each argv element is separate; placeholders: {workspace}, {prompt_file}, {model}. Do not label a custom generic loop as Claude Code."}
   ],
   "task_directories": ["data/tasks", "data/public"],

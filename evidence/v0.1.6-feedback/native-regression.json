@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-29",
+  "version": "0.1.6",
+  "engine": "CODESYS offline compile and code generation",
+  "cases": [
+    {
+      "name": "ReviewInOut valid wrapper",
+      "status": "passed",
+      "build_completed": true,
+      "generate_code_completed": true,
+      "error_count": 0,
+      "candidate_error_count": 0,
+      "wrapper_error_count": 0,
+      "toolchain_error_count": 0
+    },
+    {
+      "name": "ReviewInOut invalid candidate",
+      "status": "failed",
+      "build_completed": true,
+      "generate_code_completed": true,
+      "failure_origin": "candidate",
+      "error_count": 2,
+      "candidate_error_count": 2,
+      "wrapper_error_count": 0,
+      "toolchain_error_count": 0,
+      "diagnostics": [
+        {"code": "C46", "object": "ReviewInOut", "origin": "candidate"},
+        {"code": "C18", "object": "ReviewInOut", "origin": "candidate"}
+      ]
+    }
+  ],
+  "runtime_or_physical_plc_tested": false
+}

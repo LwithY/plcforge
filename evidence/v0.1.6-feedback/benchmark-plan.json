@@ -1,0 +1,77 @@
+{
+  "cells": [
+    {
+      "framework": "plcforge",
+      "model_label": "A",
+      "model": "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+      "framework_version": "0.1.6",
+      "framework_source_sha256": "c603deec0aa6c78819588f93b68860294bb48e5d66eb6b29c3cf199473d4bd16",
+      "tasks": 13,
+      "repetitions": 1,
+      "missing": []
+    },
+    {
+      "framework": "plcforge",
+      "model_label": "B",
+      "model": "",
+      "framework_version": "0.1.6",
+      "framework_source_sha256": "c603deec0aa6c78819588f93b68860294bb48e5d66eb6b29c3cf199473d4bd16",
+      "tasks": 13,
+      "repetitions": 1,
+      "missing": ["model_id"]
+    },
+    {
+      "framework": "claude-code-reference",
+      "model_label": "A",
+      "model": "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+      "framework_version": "configure-installed-cli-version",
+      "framework_source_sha256": null,
+      "tasks": 13,
+      "repetitions": 1,
+      "missing": ["external_cli_command"]
+    },
+    {
+      "framework": "claude-code-reference",
+      "model_label": "B",
+      "model": "",
+      "framework_version": "configure-installed-cli-version",
+      "framework_source_sha256": null,
+      "tasks": 13,
+      "repetitions": 1,
+      "missing": ["model_id", "external_cli_command"]
+    }
+  ],
+  "task_count": 13,
+  "tasks": [
+    {"id": "P01", "path": "data/tasks/P01.json", "source_type": "course_public", "review_status": "pending_confirmation"},
+    {"id": "S01", "path": "data/tasks/S01.json", "source_type": "adapted_course_example", "review_status": "pending_human_review"},
+    {"id": "S02", "path": "data/tasks/S02.json", "source_type": "synthetic_original", "review_status": "pending_human_review"},
+    {"id": "S03", "path": "data/tasks/S03.json", "source_type": "synthetic_original", "review_status": "pending_human_review"},
+    {"id": "S04", "path": "data/tasks/S04.json", "source_type": "synthetic_original", "review_status": "pending_human_review"},
+    {"id": "S05", "path": "data/tasks/S05.json", "source_type": "synthetic_original", "review_status": "pending_human_review"},
+    {"id": "S06", "path": "data/tasks/S06.json", "source_type": "synthetic_original", "review_status": "pending_human_review"},
+    {"id": "S07", "path": "data/tasks/S07.json", "source_type": "synthetic_original", "review_status": "pending_human_review"},
+    {"id": "S08", "path": "data/tasks/S08.json", "source_type": "synthetic_original", "review_status": "pending_human_review"},
+    {"id": "S09", "path": "data/tasks/S09.json", "source_type": "synthetic_original", "review_status": "pending_human_review"},
+    {"id": "S10", "path": "data/tasks/S10.json", "source_type": "synthetic_original", "review_status": "pending_human_review"},
+    {"id": "S11", "path": "data/tasks/S11.json", "source_type": "synthetic_original", "review_status": "pending_human_review"},
+    {"id": "S12", "path": "data/tasks/S12.json", "source_type": "synthetic_original", "review_status": "pending_human_review"}
+  ],
+  "frameworks": [
+    {
+      "name": "plcforge",
+      "kind": "plcforge",
+      "version": "0.1.6",
+      "source_sha256": "c603deec0aa6c78819588f93b68860294bb48e5d66eb6b29c3cf199473d4bd16"
+    },
+    {
+      "name": "claude-code-reference",
+      "kind": "external",
+      "version": "configure-installed-cli-version",
+      "source_sha256": null
+    }
+  ],
+  "public_tasks_present": true,
+  "dataset_human_review_complete": false,
+  "measurement_status": "planned; no experiment outcomes implied"
+}

@@ -8,10 +8,14 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from plcforge.compiler import CodesysCompiler, codesys_command
+from plcforge.bridge.codesys_build import diagnostic_origin, probe_source
+from plcforge.compiler import CodesysCompiler, codesys_command, source_sections
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = 'PROGRAM PLC_PRG\nVAR x : BOOL; END_VAR\nx := TRUE;\nEND_PROGRAM'
+IN_OUT_SOURCE = ('FUNCTION_BLOCK ReviewInOut\nVAR_INPUT\n    Enable : BOOL;\nEND_VAR\n'
+                 'VAR_IN_OUT\n    Value : INT;\nEND_VAR\nIF Enable THEN Value := Value + 1; END_IF;\n'
+                 'END_FUNCTION_BLOCK')
 
 
 class FakeProcess:
@@ -37,6 +41,23 @@ class FakeProcess:
 
 
 class CompilerProtocolTests(unittest.TestCase):
+    def test_probe_binds_typed_inputs_and_in_out_parameters(self):
+        pou = source_sections(IN_OUT_SOURCE)
+        self.assertEqual(pou['call_parameters'],[
+            {'name':'Enable','type':'BOOL','scope':'VAR_INPUT'},
+            {'name':'Value','type':'INT','scope':'VAR_IN_OUT'}])
+        declaration,implementation = probe_source([pou])
+        self.assertIn('PLCFORGE_arg_0_0 : BOOL;',declaration)
+        self.assertIn('PLCFORGE_arg_0_1 : INT;',declaration)
+        self.assertIn('PLCFORGE_instance_0 : ReviewInOut;',declaration)
+        self.assertEqual(implementation,
+                         'PLCFORGE_instance_0(Enable := PLCFORGE_arg_0_0, Value := PLCFORGE_arg_0_1);')
+
+    def test_bridge_and_candidate_diagnostics_are_distinct(self):
+        self.assertEqual(diagnostic_origin('PLCFORGE_CompileProbe'),'bridge_wrapper')
+        self.assertEqual(diagnostic_origin('ReviewInOut'),'candidate')
+        self.assertEqual(diagnostic_origin(None),'toolchain')
+
     def test_raw_profile_value_is_quoted_without_quoting_option_prefix(self):
         argv,command = codesys_command({'executable':'CODESYS.exe','profile':'CODESYS V3.5 SP22 Patch 4'},Path('build.py'))
         self.assertIn(' --profile="CODESYS V3.5 SP22 Patch 4"',command)

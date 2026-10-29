@@ -21,11 +21,15 @@ def sha(path):
 
 
 def main():
+    current_version = json.loads((ROOT/'package.json').read_text(encoding='utf-8'))['version']
     parser = argparse.ArgumentParser()
-    parser.add_argument('--baseline',type=Path,default=ROOT/'dist/plcforge-0.1.4.tgz')
+    parser.add_argument('--baseline',default='plcforge@0.1.5',
+                        help='Exact registry package to install before the upgrade')
+    parser.add_argument('--baseline-version',default='0.1.5')
     parser.add_argument('--current',type=Path,required=True)
     parser.add_argument('--python',type=Path,default=Path(sys.executable))
-    parser.add_argument('--registry',action='store_true',help='Install the second version from the official npm latest tag')
+    parser.add_argument('--registry',action='store_true',
+                        help='Install the second version from the official npm latest tag, then compare it with --current')
     args = parser.parse_args()
     node = Path(shutil.which('node') or '')
     npm = node.parent/'node_modules/npm/bin/npm-cli.js'
@@ -48,8 +52,8 @@ def main():
             raise ValueError(label+' failed; see '+str(run/(label+'.log')))
         return result.stdout
 
-    def install(archive, label, from_registry=False):
-        target = 'plcforge@latest' if from_registry else str(archive.resolve())
+    def install(source, label, from_registry=False):
+        target = str(source) if from_registry else str(Path(source).resolve())
         flags = ['--registry=https://registry.npmjs.org/','--prefer-online'] if from_registry else ['--offline']
         return execute([str(node),str(npm),'install','--global','--prefix',str(prefix),target,
                         '--no-audit','--no-fund','--foreground-scripts']+flags,label)
@@ -65,9 +69,9 @@ def main():
                         '$items = @($env:PLCFORGE_UPGRADE_ARGS | ConvertFrom-Json); '
                         '& $env:PLCFORGE_UPGRADE_CLI @items; exit $LASTEXITCODE'],label).strip()
 
-    install(args.baseline,'install-0.1.4')
+    install(args.baseline,'install-'+args.baseline_version,True)
     old_version = cli(['--version'],'version-before')
-    assert old_version=='0.1.4',old_version
+    assert old_version==args.baseline_version,old_version
     settings = home/'settings.json'
     settings.write_text(json.dumps({'base_url':'https://example.invalid/v1','model':'preserved-user-model',
                                     'api_key':'upgrade-test-fixture-not-a-real-key','api_key_env':''}),encoding='utf-8')
@@ -95,16 +99,17 @@ def main():
     obsolete = prefix/'node_modules/plcforge/old-version-only-fixture.txt'
     obsolete.write_text('old package content',encoding='utf-8')
     before = {name:sha(path) for name,path in preserved.items()}
-    install(args.current,'install-0.1.5',args.registry)
+    current_source = 'plcforge@latest' if args.registry else args.current
+    install(current_source,'install-'+current_version,args.registry)
     new_version = cli(['--version'],'version-after')
     doctor = json.loads(cli(['doctor'],'doctor-after'))
     after = {name:sha(path) for name,path in preserved.items()}
-    assert new_version=='0.1.5' and doctor['plcforge']=='0.1.5'
+    assert new_version==current_version and doctor['plcforge']==current_version
     assert doctor['model']=='preserved-user-model'
     assert before==after,'User files changed during upgrade'
     assert not obsolete.exists(),'Old package directory was not replaced'
     package = json.loads((prefix/'node_modules/plcforge/package.json').read_text(encoding='utf-8'))
-    assert package['version']=='0.1.5'
+    assert package['version']==current_version
     archive_files = 0
     with tarfile.open(args.current) as archive:
         for item in archive:
@@ -115,17 +120,18 @@ def main():
             assert actual.read_bytes()==archive.extractfile(item).read(),str(relative)+' differs from tested archive'
             archive_files += 1
     report = {'status':'passed','at':datetime.now(timezone.utc).isoformat(),
-              'method':'real npm registry global upgrade' if args.registry else 'real offline npm global install into the same isolated prefix',
-              'installed_from_registry':args.registry, 'installed_files_match_tested_archive':archive_files,
+              'method':'real npm registry global upgrade' if args.registry else 'registry baseline followed by a local package upgrade in the same isolated prefix',
+              'baseline_installed_from_registry':True, 'current_installed_from_registry':args.registry,
+              'installed_files_match_tested_archive':archive_files,
               'before_version':old_version,'after_version':new_version,'python_loaded_plcforge_version':doctor['plcforge'],
               'one_active_package':True,'old_package_file_removed':True,
               'preserved_files':list(preserved),'preserved_hashes':after,
               'credentials':'synthetic test fixture; actual user credentials were not read',
-              'baseline_archive_sha256':sha(args.baseline),'new_archive_sha256':sha(args.current),
+              'baseline_source':args.baseline,'new_archive_sha256':sha(args.current),
               'automatic_update_scope':'install invocation only; no background self-update or version polling',
               'processes':'already-running terminals must restart to load upgraded code',
               'codesys_scope':'configuration/template preservation only; no compiler run in this upgrade test'}
-    report_path = ROOT/'evidence/npm-upgrade-0.1.5.json'
+    report_path = ROOT/('evidence/npm-upgrade-'+current_version+'.json')
     report_path.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8',newline='\n')
     print(json.dumps({'status':report['status'],'before':old_version,'after':new_version,
                       'preserved_files':len(preserved),'report':str(report_path),'logs':str(run)},ensure_ascii=False))

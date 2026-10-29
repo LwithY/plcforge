@@ -3,15 +3,17 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import csv
+import hashlib
 import json
 import os
 from pathlib import Path
 import subprocess
 import time
 
+from . import __version__
 from .agent import Agent
 from .compiler import CodesysCompiler, terminate_process_tree
-from .config import Config
+from .config import Config, normalize_base_url
 from .ltl import monitor
 from .security import Workspace, digest, write_json
 from .st import run_tests
@@ -39,9 +41,76 @@ def score(workspace: Path, task: dict, config: Config, compile_history=None) -> 
             'test_engine':'st-subset-scan-simulator', 'plc_runtime_tests_performed':False}
 
 
+def source_tree_sha256(root: Path) -> str:
+    package = root/'plcforge'
+    if not package.is_dir():
+        raise ValueError('PLCForge package directory is missing: '+str(package))
+    manifest = [{'path':file.relative_to(root).as_posix(),
+                 'sha256':hashlib.sha256(file.read_bytes()).hexdigest()}
+                for file in sorted(package.rglob('*.py'))]
+    return digest(json.dumps(manifest,sort_keys=True,separators=(',',':')))
+
+
+def framework_identity(framework: dict, root: Path) -> dict:
+    if framework.get('kind') == 'plcforge':
+        configured = framework.get('version')
+        if configured != __version__:
+            raise ValueError('Matrix framework plcforge.version is %r but runtime version is %s' %
+                             (configured,__version__))
+        return {'name':framework['name'],'kind':'plcforge','version':__version__,
+                'source_sha256':source_tree_sha256(root)}
+    return {'name':framework['name'],'kind':framework.get('kind','external'),
+            'version':framework.get('version','unrecorded'),'source_sha256':None}
+
+
+def preflight(matrix: dict, root: Path) -> tuple[list[tuple[Path,dict]],list[dict]]:
+    for field in ('task_directories','frameworks','models'):
+        if not matrix.get(field):
+            raise ValueError('Benchmark matrix missing '+field)
+    root = root.resolve()
+    tasks = []
+    for entry in matrix['task_directories']:
+        directory = (root/entry).resolve()
+        if not directory.is_relative_to(root):
+            raise ValueError('Task directory escapes package root: '+str(entry))
+        if not directory.is_dir():
+            raise ValueError('Task directory does not exist: '+str(entry))
+        tasks.extend((file,load_task(file)) for file in sorted(directory.glob('*.json')))
+    if not tasks:
+        raise ValueError('Benchmark matrix contains no task JSON files')
+    task_ids = [task['id'] for _,task in tasks]
+    duplicates = sorted({task_id for task_id in task_ids if task_ids.count(task_id)>1})
+    if duplicates:
+        raise ValueError('Duplicate benchmark task IDs: '+', '.join(duplicates))
+    names = [framework.get('name') for framework in matrix['frameworks']]
+    if any(not name for name in names) or len(names) != len(set(names)):
+        raise ValueError('Benchmark framework names must be nonempty and unique')
+    identities = [framework_identity(framework,root) for framework in matrix['frameworks']]
+    return tasks,identities
+
+
+def run_config_for_model(config: Config, model: dict) -> Config:
+    if not model.get('id'):
+        raise ValueError('Benchmark model requires a nonempty id')
+    copied = config.copy_for_run()
+    original_base_url = copied.base_url
+    copied.model = model['id']
+    copied.base_url = model.get('base_url',copied.base_url)
+    selected_base_url = normalize_base_url(copied.base_url)
+    if selected_base_url != original_base_url:
+        # Never forward an inline token to a different endpoint selected by a matrix.
+        copied.api_key = ''
+        copied.api_key_env = model.get('api_key_env','')
+    else:
+        copied.api_key_env = model.get('api_key_env',copied.api_key_env)
+    return copied.validate()
+
+
 def plan(matrix: dict, root: Path, config: Config) -> dict:
-    directories = [root/entry for entry in matrix['task_directories']]
-    tasks = [load_task(file) for d in directories for file in sorted(d.glob('*.json'))]
+    task_entries,identities = preflight(matrix,root)
+    tasks = [task for _,task in task_entries]
+    identity_by_name = {identity['name']:identity for identity in identities}
+    compiler_status = CodesysCompiler(config.codesys).doctor()['status']
     cells = []
     for framework in matrix['frameworks']:
         for label,model in matrix['models'].items():
@@ -50,11 +119,19 @@ def plan(matrix: dict, root: Path, config: Config) -> dict:
                 missing.append('model_id')
             if framework['kind'] == 'external' and not framework.get('command'):
                 missing.append('external_cli_command')
-            if CodesysCompiler(config.codesys).doctor()['status'] == 'unavailable':
+            if compiler_status == 'unavailable':
                 missing.append('codesys')
+            identity = identity_by_name[framework['name']]
             cells.append({'framework':framework['name'],'model_label':label,'model':model.get('id'),
+                          'framework_version':identity['version'],
+                          'framework_source_sha256':identity['source_sha256'],
                           'tasks':len(tasks),'repetitions':matrix.get('repetitions',1),'missing':missing})
     return {'cells':cells, 'task_count':len(tasks),
+            'tasks':[{'id':task['id'],'path':file.resolve().relative_to(root.resolve()).as_posix(),
+                      'source_type':task['provenance']['source_type'],
+                      'review_status':task['provenance']['review_status']}
+                     for file,task in task_entries],
+            'frameworks':identities,
             'public_tasks_present':any(t['provenance']['source_type']=='course_public' for t in tasks),
             'dataset_human_review_complete':all(t['provenance'].get('review_status')=='human_reviewed' for t in tasks),
             'measurement_status':'planned; no experiment outcomes implied'}
@@ -122,6 +199,7 @@ def dispatch(args, config: Config) -> int:
         output(current_plan)
         return 0
     framework = next(f for f in matrix['frameworks'] if f['name']==args.framework)
+    framework_record = next(f for f in current_plan['frameworks'] if f['name']==args.framework)
     model = matrix['models'][args.model_label]
     if not model.get('id'):
         raise ValueError('Set the model ID for '+args.model_label+' in the matrix')
@@ -141,10 +219,7 @@ def dispatch(args, config: Config) -> int:
             prompt = task_prompt(task)
             prompt_file = workspace/'task_prompt.txt'
             prompt_file.write_text(prompt,encoding='utf-8')
-            run_config = Config(**config.public())
-            run_config.model = model['id']
-            run_config.base_url = model.get('base_url',config.base_url)
-            run_config.api_key_env = model.get('api_key_env',config.api_key_env)
+            run_config = run_config_for_model(config,model)
             for key in ('max_turns','max_output_tokens','total_token_budget','wall_seconds'):
                 if key in matrix.get('limits',{}):
                     setattr(run_config,key,matrix['limits'][key])
@@ -167,9 +242,11 @@ def dispatch(args, config: Config) -> int:
                         generation = {'status':'timeout'}
                 result = {'usage':None,'usage_missing':True}
             evaluation = score(workspace,task,run_config,result.get('compile_history'))
-            record = {'framework':framework['name'],'framework_version':framework.get('version','unrecorded'),
+            record = {'framework':framework['name'],'framework_version':framework_record['version'],
+                      'framework_source_sha256':framework_record['source_sha256'],
                       'model_label':args.model_label,'model':model['id'],'repetition':repetition+1,
                       'base_url':run_config.base_url,'task_file':str(file),'prompt_sha256':digest(prompt),
+                      'credential_source':run_config.describe()['credential_source'],
                       'generation':generation,'score':evaluation,'usage':result.get('usage'),
                       'usage_missing':result.get('usage_missing',False),
                       'budget_policy':result.get('budget_policy'), 'usage_records':result.get('usage_records'),

@@ -131,6 +131,19 @@ class Config:
     def public(self) -> dict:
         return {k:v for k,v in asdict(self).items() if k!='api_key' and not k.startswith('_')}
 
+    def copy_for_run(self) -> 'Config':
+        """Copy the complete in-memory runtime configuration without publishing it.
+
+        ``public()`` is intentionally safe for logs and therefore omits credentials.
+        Benchmark workers need a separate copy path so an inline settings key remains
+        available in memory while still never appearing in exported metadata.
+        """
+        values = asdict(self)
+        settings_path = values.pop('_settings_path', '')
+        copied = Config(**values)
+        copied._settings_path = settings_path
+        return copied.validate()
+
     def describe(self):
         return {'settings_file':self._settings_path or None, 'base_url':self.base_url,'model':self.model,
                 'api_key_env':self.api_key_env,'credential_present':self.has_key(),
