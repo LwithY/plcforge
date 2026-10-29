@@ -7,7 +7,7 @@
     {"name": "plcforge", "kind": "plcforge", "version": "0.1.6"},
     {"name": "claude-code-reference", "kind": "external", "version": "configure-installed-cli-version", "command": [], "notes": "Configure a real existing CLI that accepts the same model/endpoint. Each argv element is separate; placeholders: {workspace}, {prompt_file}, {model}. Do not label a custom generic loop as Claude Code."}
   ],
-  "task_directories": ["data/tasks", "data/public"],
+  "task_directories": ["data/tasks"],
   "repetitions": 1,
   "limits": {"max_turns": 24, "max_output_tokens": 8192, "total_token_budget": 160000, "wall_seconds": 900},
   "protocol": "Freeze dataset and budgets before experiment. Record model and baseline CLI versions. Populate course public questions and second model. Compile using the same CODESYS profile/template. Automatic subset tests are supplementary; runtime validation is separate. Review all self-built questions before submission."

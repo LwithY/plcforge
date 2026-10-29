@@ -103,8 +103,12 @@ def main():
     install(current_source,'install-'+current_version,args.registry)
     new_version = cli(['--version'],'version-after')
     doctor = json.loads(cli(['doctor'],'doctor-after'))
+    installed_matrix = prefix/'node_modules/plcforge/experiments/matrix.json'
+    bench_plan = json.loads(cli(['bench','plan','--matrix',str(installed_matrix.resolve())],
+                                'bench-plan-after'))
     after = {name:sha(path) for name,path in preserved.items()}
     assert new_version==current_version and doctor['plcforge']==current_version
+    assert bench_plan['task_count']>=1 and len(bench_plan['tasks'])==bench_plan['task_count']
     assert doctor['model']=='preserved-user-model'
     assert before==after,'User files changed during upgrade'
     assert not obsolete.exists(),'Old package directory was not replaced'
@@ -125,6 +129,8 @@ def main():
               'installed_files_match_tested_archive':archive_files,
               'before_version':old_version,'after_version':new_version,'python_loaded_plcforge_version':doctor['plcforge'],
               'one_active_package':True,'old_package_file_removed':True,
+              'installed_benchmark_plan_tasks':bench_plan['task_count'],
+              'installed_benchmark_public_tasks_present':bench_plan['public_tasks_present'],
               'preserved_files':list(preserved),'preserved_hashes':after,
               'credentials':'synthetic test fixture; actual user credentials were not read',
               'baseline_source':args.baseline,'new_archive_sha256':sha(args.current),

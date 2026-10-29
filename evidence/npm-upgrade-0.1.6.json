@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "at": "2026-10-29T02:53:43.524392+00:00",
+  "at": "2026-10-29T03:05:09.020076+00:00",
   "method": "registry baseline followed by a local package upgrade in the same isolated prefix",
   "baseline_installed_from_registry": true,
   "current_installed_from_registry": false,
@@ -10,6 +10,8 @@
   "python_loaded_plcforge_version": "0.1.6",
   "one_active_package": true,
   "old_package_file_removed": true,
+  "installed_benchmark_plan_tasks": 13,
+  "installed_benchmark_public_tasks_present": true,
   "preserved_files": [
     "settings.json",
     "plcforge.json",
@@ -30,7 +32,7 @@
   },
   "credentials": "synthetic test fixture; actual user credentials were not read",
   "baseline_source": "plcforge@0.1.5",
-  "new_archive_sha256": "9fada05367dc9750fb914016dd4b6ea4c66df398e919406bdf8c3b09e046d8b4",
+  "new_archive_sha256": "7f6cc29489d46de3878ded5b15d547ab8bae90f8e4069d77d1573faa3ce76a44",
   "automatic_update_scope": "install invocation only; no background self-update or version polling",
   "processes": "already-running terminals must restart to load upgraded code",
   "codesys_scope": "configuration/template preservation only; no compiler run in this upgrade test"
