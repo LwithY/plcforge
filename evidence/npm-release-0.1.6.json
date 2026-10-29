@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-29",
+  "package": "plcforge",
+  "version": "0.1.6",
+  "status": "published_and_verified",
+  "registry": "https://registry.npmjs.org/",
+  "dist_tags": {
+    "latest": "0.1.6"
+  },
+  "registry_metadata": {
+    "tarball": "https://registry.npmjs.org/plcforge/-/plcforge-0.1.6.tgz",
+    "sha1": "36f56728c2cab8a992481728f7b0c11e01fbaa2d",
+    "integrity": "sha512-y3NH8UNyqm28r79pclZVmnFbnZFhZ7/iGSyKGxEfCbfL6lS7OY2IxCQLDM+W68fMLHY3o1RY26t8erRgOYKO1Q=="
+  },
+  "tested_archive": {
+    "path": "dist/plcforge-0.1.6.tgz",
+    "sha256": "7f6cc29489d46de3878ded5b15d547ab8bae90f8e4069d77d1573faa3ce76a44",
+    "files": 57,
+    "registry_files_match": 57
+  },
+  "upgrade_verification": {
+    "status": "passed",
+    "baseline": "plcforge@0.1.5 from npm registry",
+    "current": "plcforge@0.1.6 from npm registry",
+    "before_version": "0.1.5",
+    "after_version": "0.1.6",
+    "preserved_files": 7,
+    "one_active_package": true,
+    "old_package_file_removed": true,
+    "installed_benchmark_plan_tasks": 13,
+    "installed_benchmark_public_tasks_present": true
+  },
+  "install": "npm install -g plcforge@0.1.6",
+  "upgrade": "npm install -g plcforge@latest"
+}
+

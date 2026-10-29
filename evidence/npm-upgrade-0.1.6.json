@@ -1,9 +1,9 @@
 {
   "status": "passed",
-  "at": "2026-10-29T03:05:09.020076+00:00",
-  "method": "registry baseline followed by a local package upgrade in the same isolated prefix",
+  "at": "2026-10-29T03:18:45.205021+00:00",
+  "method": "real npm registry global upgrade",
   "baseline_installed_from_registry": true,
-  "current_installed_from_registry": false,
+  "current_installed_from_registry": true,
   "installed_files_match_tested_archive": 57,
   "before_version": "0.1.5",
   "after_version": "0.1.6",

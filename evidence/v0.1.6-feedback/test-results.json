@@ -17,12 +17,21 @@
     "status": "passed",
     "before": "0.1.5",
     "after": "0.1.6",
+    "baseline_installed_from_registry": true,
+    "current_installed_from_registry": true,
     "preserved_files": 7,
     "installed_files_matching_package": 57,
     "installed_benchmark_plan_tasks": 13,
     "installed_benchmark_public_tasks_present": true
   },
+  "registry_release": {
+    "status": "published_and_verified",
+    "latest": "0.1.6",
+    "sha1": "36f56728c2cab8a992481728f7b0c11e01fbaa2d",
+    "integrity": "sha512-y3NH8UNyqm28r79pclZVmnFbnZFhZ7/iGSyKGxEfCbfL6lS7OY2IxCQLDM+W68fMLHY3o1RY26t8erRgOYKO1Q=="
+  },
   "dataset": {"status": "passed", "task_count": 13, "public_tasks_received": true},
   "real_model_calls": 0,
   "physical_plc_runs": 0
 }
+
